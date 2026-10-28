@@ -9,4 +9,4 @@ This directory is an isolated local copy of production version 15.
 - Preserve all eight rooms, sixteen beds, population counts, triage distribution, movement paths, transport rules, timeline, dashboard, logo and author credit unless the user explicitly requests a functional change.
 - Improve visual assets, physically based materials, lighting and interface without moving the approved layout.
 - Keep a clear experimental label and an easy comparison with the baseline.
-- The user chose local experimentation. Proceed locally; do not register, remix or publish a hosted site unless explicitly requested later.
+- The user authorized publishing the experiment on this repository's GitHub Pages. Keep the existing approved Sites deployment unchanged.
