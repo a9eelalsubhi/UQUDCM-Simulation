@@ -9,6 +9,8 @@ import {stadiumOutline} from './traffic.js';
 const $=id=>document.getElementById(id);
 const viewport=$('viewport'),scene=new THREE.Scene();
 scene.background=new THREE.Color('#c8d9e4');scene.fog=new THREE.Fog('#c8d9e4',175,370);
+function updateSceneTheme(){const dark=document.documentElement.dataset.theme==='dark';const color=dark?'#1b302e':'#c8d9e4';scene.background.set(color);scene.fog.color.set(color);if(mode==='overview'){scene.fog.near=dark?350:175;scene.fog.far=dark?700:370;}}
+new MutationObserver(updateSceneTheme).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
 const camera=new THREE.PerspectiveCamera(48,1,.2,900);
 let renderer;try{renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});}catch(e){$('loading').innerHTML='<h2>المتصفح لا يدعم عرض 3D</h2><p>افتح الرابط في Chrome أو Safari حديث مع تفعيل WebGL.</p>';throw e}
 const mobileScreen=matchMedia('(max-width:800px)').matches;renderer.setPixelRatio(Math.min(devicePixelRatio,mobileScreen?1.5:2));renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.shadowMap.autoUpdate=false;renderer.shadowMap.needsUpdate=true;renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.0;viewport.appendChild(renderer.domElement);
@@ -52,7 +54,7 @@ optimizeStatic();
 function fitOverview(){
  const target=new THREE.Vector3(22,0,43),back=new THREE.Vector3(75,101,115).normalize(),right=new THREE.Vector3().crossVectors(new THREE.Vector3(0,1,0),back).normalize(),up=new THREE.Vector3().crossVectors(back,right),tanV=Math.tan(THREE.MathUtils.degToRad(camera.fov/2)),tanH=tanV*camera.aspect;let distance=0;
  for(const x of [-73,117])for(const z of [-25,120])for(const y of [0,8]){const v=new THREE.Vector3(x,y,z).sub(target);distance=Math.max(distance,Math.abs(v.dot(right))/tanH+v.dot(back),Math.abs(v.dot(up))/tanV+v.dot(back));}
- distance*=1.08;camera.position.copy(target).addScaledVector(back,distance);orbit.target.copy(target);orbit.update();scene.fog.near=Math.max(175,distance*1.15);scene.fog.far=Math.max(370,distance*2);
+ distance*=1.08;camera.position.copy(target).addScaledVector(back,distance);orbit.target.copy(target);orbit.update();scene.fog.near=Math.max(document.documentElement.dataset.theme==='dark'?350:175,distance*1.15);scene.fog.far=Math.max(document.documentElement.dataset.theme==='dark'?700:370,distance*2);
 }
 function resize(){const w=viewport.clientWidth,h=viewport.clientHeight;renderer.setSize(w,h);camera.aspect=w/h;camera.updateProjectionMatrix();if(mode==='overview'&&overviewFit)fitOverview();}
 
