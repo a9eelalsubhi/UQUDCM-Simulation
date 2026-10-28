@@ -139,7 +139,7 @@ export function buildFacility(scene){
  for(const a of [-1,1])box(a*2.85,1.55,4.25,.07,3.1,.08,steel);
  // Clinical wings. Two rooms for each named zone, sixteen beds.
  roomData.forEach((r,i)=>{
-  const x=r.x,first=world.children.length,colliderStart=colliders.length;box(x,.027,-4,6.3,.012,7.8,mat(new THREE.Color(r.color).lerp(new THREE.Color('#ffffff'),.72).getStyle(),0,.85));box(x,.041,-.65,5.9,.008,.5,mat(r.color));box(x,1.7,-7.83,6.3,3.4,.025,white);
+  const x=r.x,first=world.children.length,colliderStart=colliders.length;box(x,.027,-4,6.3,.012,7.8,new THREE.MeshBasicMaterial({color:new THREE.Color(r.color).lerp(new THREE.Color('#ffffff'),.35),toneMapped:false}));box(x,.041,-.65,5.9,.008,.5,new THREE.MeshBasicMaterial({color:r.color,toneMapped:false}));box(x,1.7,-7.83,6.3,3.4,.025,white);
   wall(x-3.25,-4,.16,8);if(i===0||i===4)wall(x+3.25,-4,.16,8);
   wall(x-2.08,0,2.3,.15);wall(x+2.08,0,2.3,.15);
   box(x,2.9,0,1.88,1.02,.14,white);label('Zone '+r.zone+'  ·  '+r.id,x,2.9,.085,3,.48,r.color);box(x,1.24,-7.7,6.1,.4,.03,r.color);
@@ -195,7 +195,7 @@ export function buildFacility(scene){
 
  for(const x of [-7,-5]){cyl(x,.7,-16.2,.65,.08,wood);chair(x-.8,-16.2,-Math.PI/2);chair(x+.8,-16.2,Math.PI/2)}
  // Four broad high contrast routes match the clinical zones.
- for(const r of roomData){const lane={A:.65,B:1.35,C:2.65,D:3.35}[r.zone],entryX={A:-.75,B:-.25,C:.25,D:.75}[r.zone];line([[entryX,4.5],[entryX,lane],[r.x,lane],[r.x,4.65]],r.color,.22);}
+ for(const r of roomData){const lane={A:.65,B:1.35,C:2.65,D:3.35}[r.zone],entryX={A:-.75,B:-.25,C:.25,D:.75}[r.zone];line([[entryX,4.5],[entryX,lane],[r.x,lane],[r.x,4.65]],new THREE.MeshBasicMaterial({color:r.color,toneMapped:false}),.22);}
  for(const [zone,x,z] of [['A',-31, .65],['B',-18,1.35],['C',18,2.65],['D',31,3.35]])floorLabel('ZONE '+zone,x,z,2.4,.43,roomData.find(r=>r.zone===zone).color);
  world.children.slice(buildingStart).forEach(o=>o.position.y+=floorHeight);
  // A continuous ramp connects the driveway to the raised hospital floor.

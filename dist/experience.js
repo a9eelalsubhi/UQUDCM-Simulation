@@ -4,6 +4,10 @@ bar.id = 'experience-bar';
 bar.setAttribute('aria-label', 'التنقل والتحكم');
 bar.innerHTML = `<div class="bar-modes"></div><details class="bar-menu" id="places-menu"><summary>استكشف المكان <span>⌄</span></summary><div class="menu-content"><h3>انتقل إلى مكان</h3><div id="places-slot"></div></div></details><details class="bar-menu" id="settings-menu"><summary>المزيد <span>⌄</span></summary><div class="menu-content"><h3>خيارات العرض</h3><div id="settings-slot"></div></div></details><div id="launch-slot"></div><button id="show-sim-details" hidden>تفاصيل المحاكاة ☰</button>`;
 document.body.append(bar);
+const themeButton=document.createElement('button');themeButton.id='theme-toggle';themeButton.type='button';bar.querySelector('#settings-menu').after(themeButton);
+let storedTheme=null;try{storedTheme=localStorage.getItem('uqudcm-theme');}catch{}
+function applyTheme(dark){document.documentElement.dataset.theme=dark?'dark':'light';themeButton.textContent=dark?'☀ الوضع الفاتح':'☾ الوضع الداكن';themeButton.setAttribute('aria-label',themeButton.textContent);themeButton.setAttribute('aria-pressed',String(dark));try{localStorage.setItem('uqudcm-theme',dark?'dark':'light');}catch{}}
+themeButton.addEventListener('click',()=>applyTheme(document.documentElement.dataset.theme!=='dark'));applyTheme(storedTheme==='dark');
 bar.querySelector('.bar-modes').append(document.querySelector('#panel .segmented'));
 $('places-slot').append($('destinations'));
 const settings = $('settings-slot');

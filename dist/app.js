@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import {startVisualLab} from './lab-visuals.js';
 import {OrbitControls} from 'three/addons/OrbitControls.js';
 import {mergeGeometries} from './vendor/BufferGeometryUtils.js';
-import {buildFacility,roomData,siteLayout} from './facility.js';
+import {buildFacility,roomData,siteLayout} from './facility.js?v=20261028c';
 import {createDrill} from './drill.js';
 import {createDashboard} from './dashboard.js';
 import {stadiumOutline} from './traffic.js';
