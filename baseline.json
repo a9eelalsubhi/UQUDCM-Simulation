@@ -1,0 +1,31 @@
+{
+  "source_commit": "2383cfd94bcf2b316f5a609957deb5e82a16e077",
+  "source_version": 15,
+  "source_url": "https://uqudcm-hajj-walkthrough.doctors-and-hci.chatgpt.site/",
+  "created": "2026-10-28",
+  "status": "Frozen source snapshot, captured before local visual changes",
+  "files_sha256": {
+    "dist/app.js": "5be9c8ab758fd5374c1cb47040a6cb7ae0f41e04b1aa990aa86c18f7fa1de20a",
+    "dist/assets/college-layout.png": "3498f10d74807c995982d0c7aaa198f2a1d37b08fc70d30f70575baf395dd963",
+    "dist/assets/exit-reference.jpg": "6c0b46c6fd9a7c5cdf8536b8148078183fbeab3cc0bebd1a24aee052c1a08db3",
+    "dist/assets/green-reference.jpg": "1036da3ad562ac69c4e324765f02198a153e3af8ffa06edf4936a3687eaa68e7",
+    "dist/assets/reception-plan.png": "78b6b370f7d43e032746f50d156fb6c20cedea3d51f98156a66c26b3b84d83df",
+    "dist/assets/room-plan.png": "7920ced71c9731b15d33509195679f15d4af6e3eff0eb9e3d7a7fd17f5d20c04",
+    "dist/assets/site-plan.png": "221254463622f048e876ebe8c2e956c7056b4be35afe6d8228de31240cb6723e",
+    "dist/assets/sketch.png": "7468f90e1d76836245cbc7410a5e01f3e4c07ee1425cf9f1fef7827a62647a01",
+    "dist/assets/uqudcm-logo.png": "b0b30a689e981d64c748c00bcc671a8c3eb82921df6ca346df2b179cb68491b0",
+    "dist/branding.css": "e5e3318b09b42450e87817c7fb643ae8eb16ccbf8fd1ddb453bb3b5963df1339",
+    "dist/dashboard.js": "73d7f05764265d90e8dddbf8f30072adcabeee4e6beba7afaf44f55dc0323f8b",
+    "dist/drill.css": "bb8b40ed4b05cc44382fb0637cfcb4f0e84afc7af9e7b8495a6be07ba3d08883",
+    "dist/drill.js": "204a2324683fc2e2dc991c4ad31158f47c578fd3dfd9826ae112e279849d36e2",
+    "dist/facility.js": "26c985601c4eced366f3b08253b7272bf9000b440c97c39a94c696ad7b42cf3b",
+    "dist/index.html": "90f4b9a26f28dffce549b319761fd1f65aa7546ab67d71040b5bec2534f0a3fd",
+    "dist/simulation-center.css": "65f1efaacab5ee9944707dc80d603549aab6c796481464aa8e6e2a4ede41fb40",
+    "dist/styles.css": "10d90454fd34bad31e3511c4f7be89079430d4f02700bf69958a82d5783b8cfa",
+    "dist/traffic.js": "914b4abdb189e9e6978e155243e9f91632a6af276a6ed534a020ade8105dc01c",
+    "dist/vendor/BufferGeometryUtils.js": "fda7e946b8e0b5ab39b779206589e7a1079a22eb24efb89d7223e03fdfb1f751",
+    "dist/vendor/OrbitControls.js": "b97879c748170baadeb3fb84cea1ffdf4674e283dc06042f34e2acb95a76042c",
+    "dist/vendor/three.core.js": "eb077d2417f61d3e6d9264c317cabc4ea35769ed6b0ab533067292a550784c20",
+    "dist/vendor/three.module.js": "c8211c69345d2e9949dc7a8ac969380497aa0600a5a8ac6a459c8cd02dd9cb8a"
+  }
+}

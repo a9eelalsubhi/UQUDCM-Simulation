@@ -1,0 +1,23 @@
+# Local runtime and secrets
+__pycache__/
+*.py[cod]
+.venv/
+node_modules/
+.env
+.env.*
+!.env.example
+*.log
+*.tar
+*.zip
+
+# One-time migration scripts and machine-specific browser verification helpers
+/build-visual-experiment.py
+/finalize-lab.py
+/prepare-git-upload.py
+/verify-cameras.cjs
+/verify-visual-lab.cjs
+
+# Local review output; curated preview lives in docs/
+/*-qa.json
+/lab-*.png
+/baseline-entry.png
