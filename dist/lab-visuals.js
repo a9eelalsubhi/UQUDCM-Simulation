@@ -13,7 +13,7 @@ function paintSurface(kind,color){
 }
 export function labSurface(kind,color){
  const key=kind+color;if(surfaces.has(key))return surfaces.get(key);let m=null;
- if(kind==='asphalt'&&color==='#48535b')m=new THREE.MeshStandardMaterial({map:texture('asphalt_01_diff.jpg',true),normalMap:texture('asphalt_01_nor_gl.jpg'),roughnessMap:texture('asphalt_01_rough.jpg'),normalScale:new THREE.Vector2(.35,.35),roughness:.95,color:'#d2d3d2'});
+ if(kind==='asphalt'&&color==='#48535b')m=paintSurface('asphalt','#636d6b');
  if(kind==='concrete')m=new THREE.MeshStandardMaterial({map:texture('concrete_wall_001_diff.jpg',true),normalMap:texture('concrete_wall_001_nor_gl.jpg'),roughnessMap:texture('concrete_wall_001_rough.jpg'),normalScale:new THREE.Vector2(.16,.16),roughness:.9,color:new THREE.Color().setRGB(1.25,1.10,.90)});
  if(kind==='wood')m=new THREE.MeshPhysicalMaterial({map:texture('wood_table_001_diff.jpg',true),normalMap:texture('wood_table_001_nor_gl.jpg'),roughnessMap:texture('wood_table_001_rough.jpg'),normalScale:new THREE.Vector2(.2,.2),roughness:.6,color:'#a78c75',clearcoat:.18,clearcoatRoughness:.45});
  if(kind==='tile')m=paintSurface(color==='#bcaf98'?'paving':'tile',color==='#bcaf98'?'#c6bba6':'#e1e3e0');
