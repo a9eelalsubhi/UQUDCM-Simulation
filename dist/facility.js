@@ -2,10 +2,10 @@ import * as THREE from 'three';
 import {labSurface,surfaceUV,foliage,humanTorso} from './lab-visuals.js';
 import {ambulanceLoop,stadiumOutline,lapPoints,pathLength} from './traffic.js';
 export const roomData=[
- {id:'A1/A2',zone:'A',x:-39.75,color:'#db5551'},{id:'A3/A4',zone:'A',x:-33.25,color:'#db5551'},
- {id:'B1/B2',zone:'B',x:-26.75,color:'#38a071'},{id:'B3/B4',zone:'B',x:-20.25,color:'#38a071'},
- {id:'C1/C2',zone:'C',x:20.25,color:'#3987d5'},{id:'C3/C4',zone:'C',x:26.75,color:'#3987d5'},
- {id:'D1/D2',zone:'D',x:33.25,color:'#edbd3c'},{id:'D3/D4',zone:'D',x:39.75,color:'#edbd3c'}
+ {id:'A1/A2',zone:'A',x:-39.75,color:'#df292d'},{id:'A3/A4',zone:'A',x:-33.25,color:'#df292d'},
+ {id:'B1/B2',zone:'B',x:-26.75,color:'#168d54'},{id:'B3/B4',zone:'B',x:-20.25,color:'#168d54'},
+ {id:'C1/C2',zone:'C',x:20.25,color:'#1976d2'},{id:'C3/C4',zone:'C',x:26.75,color:'#1976d2'},
+ {id:'D1/D2',zone:'D',x:33.25,color:'#f0b900'},{id:'D3/D4',zone:'D',x:39.75,color:'#f0b900'}
 ];
 export const siteLayout={
  fireSite:{x:51,z:2,w:16,d:20,exitX:59,exitZ:2,attached:true},ambulanceLoop,bounds:{x0:-78,x1:122,z0:-29,z1:125},court:{x:22,z:31,w:150,d:66},
@@ -212,14 +212,15 @@ export function buildFacility(scene){
  // Green occupies existing parking next to the college. Elongated red/yellow mats are at its tree-lined end.
  const triages=[
   {id:'black',...siteLayout.black,c:'#303c40',title:'BLACK / DECEASED\nالوفيات — أسود'},
-  {id:'red',...siteLayout.red,c:'#b63f39',title:'RED (TRIAGE)\nالفرز الأحمر'},
-  {id:'yellow',...siteLayout.yellow,c:'#dcb03d',title:'YELLOW (TRIAGE)\nالفرز الأصفر'},
-  {id:'green',...siteLayout.green,c:'#348462',title:'GREEN (TRIAGE)\nالفرز الأخضر'}
+  {id:'red',...siteLayout.red,c:'#d32730',title:'RED (TRIAGE)\nالفرز الأحمر'},
+  {id:'yellow',...siteLayout.yellow,c:'#e7b600',title:'YELLOW (TRIAGE)\nالفرز الأصفر'},
+  {id:'green',...siteLayout.green,c:'#168b50',title:'GREEN (TRIAGE)\nالفرز الأخضر'}
  ];
  box(46,.005,8,6,.035,18,paving);box(74,.005,22,24,.035,16,paving);
  function cone(x,z,color){box(x,.045,z,.45,.09,.45,rubber);mesh(new THREE.ConeGeometry(.18,.65,12),mat(color),x,.4,z);cyl(x,.47,z,.095,.1,white)}
  triages.forEach(t=>{
-  if(t.id==='green'){for(const side of [-1,1])box(t.x,.052,t.z+side*5.25,t.w,.02,6.5,t.c)}else box(t.x,.052,t.z,t.w,.02,t.d,t.c);
+  const matColor=t.id==='black'?mat(t.c):new THREE.MeshBasicMaterial({color:t.c,toneMapped:false});
+  if(t.id==='green'){for(const side of [-1,1])box(t.x,.052,t.z+side*5.25,t.w,.02,6.5,matColor)}else box(t.x,.052,t.z,t.w,.02,t.d,matColor);
   for(const a of [-t.w/2+.15,t.w/2-.15])for(const b of [-t.d/2+.15,t.d/2-.15])cone(t.x+a,t.z+b,t.c);
   const signX=t.id==='green'?t.x-t.w/2-1:t.x,signZ=t.id==='green'?t.z+3:t.z+t.d/2+.6;
   label(t.title,signX,1.4,signZ,t.id==='green'?2.7:2.4,.95,t.c,undefined,world,t.id==='green'?-Math.PI/2:0);
@@ -234,7 +235,7 @@ export function buildFacility(scene){
   for(const a of [-2.5,2.5])for(const b of [-2.5,2.5])cyl(a,1.45,b,.035,2.9,white,g);
   let roof=mesh(new THREE.ConeGeometry(3.8,1.7,4),white,0,3.5,0,g);roof.rotation.y=Math.PI/4;
   box(0,2.2,-2.48,5,.5,.025,white,g);box(0,1.3,-2.48,5,2.6,.025,'#eeeadd',g);for(const side of [-1,1])box(side*2.48,1.3,0,.025,2.6,5,'#eeeadd',g);
-  label('GREEN (TRIAGE)\nالفرز الأخضر',0,2.5,2.53,4,.65,'#397a5c',undefined,g);
+  label('GREEN (TRIAGE)\nالفرز الأخضر',0,2.5,2.53,4,.65,'#168b50',undefined,g);
   label('بسطة '+t.id+' · '+(t.patients===2?'حالتان':'حالة واحدة')+' · 4 طلاب طب',0,2.02,2.53,4,.34,'#edf4e9','#315746',g);
   box(0,.7,0,2,.075,1,white,g);for(const a of [-.8,.8])for(const b of [-.35,.35])box(a,.35,b,.04,.7,.04,steel,g);
   function member(u,v,angle,config){const o=person(0,0,false,'#3d996a',angle,config);world.remove(o);o.position.set(u,0,v);g.add(o);return o;}
