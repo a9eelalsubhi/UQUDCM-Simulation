@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {RoundedBoxGeometry} from './vendor/RoundedBoxGeometry.js';
-import {humanTorso} from './lab-visuals.js';
+import {humanTorso,cloth as clothMat,skin as skinMat,hair as hairMat,carPaint} from './lab-visuals.js?v=20261029e';
 import {ambulanceJourney,ambulanceReturn,ambulanceDispatch,ambulanceStaging,smoothRoad} from './traffic.js';
 
 const COLORS={green:'#338965',yellow:'#d5ae38',red:'#b64340',black:'#303c40',doctor:'#ecf1ed',guide:'#e8903a'};
@@ -48,13 +48,14 @@ export function createDrill({scene,facility,renderer,onChange=()=>{},onFocus=()=
  }
  function avatar({role='patient',kind='green',index=0,lying=false,covered=false}={}){
   const root=new THREE.Group(),figure=new THREE.Group();root.userData.role=role;root.userData.kind=kind;root.add(figure);roots.add(root);root.visible=false;
-  const skin=(kind==='red'||kind==='black')&&role==='patient'?'#a89f91':['#c79d7c','#ae8065','#d5b49a','#b98a69'][index%4],uniform=role==='doctor'?COLORS.doctor:role==='guide'?COLORS.guide:role==='nurse'?'#326e80':(kind==='red'||kind==='black')?'#555752':['#a7bac2','#b5b5a5','#8caaa8','#c3aa91'][index%4],dark='#253b44',hair='#282824';
+  const skin=skinMat((kind==='red'||kind==='black')&&role==='patient'?'#a89f91':['#c08f6c','#a8795c','#cfa685','#8f6248','#b88566'][index%5]),uniform=clothMat(role==='doctor'?COLORS.doctor:role==='guide'?COLORS.guide:role==='nurse'?'#326e80':(kind==='red'||kind==='black')?'#555752':['#a7bac2','#b5b5a5','#8caaa8','#c3aa91','#e8e2d4','#7f8f9a'][index%6]),dark=clothMat(['#253b44','#2c2f33','#3a3d40'][index%3]),hair=hairMat('#1d1b19');
   const arms=[],legs=[],knees=[];
   box(figure,0,.91,0,.4,.23,.27,uniform);const torso=part(figure,'human',[],uniform,0,1.19,0);
   ell(figure,0,1.68,0,.132,.18,.116,skin);part(figure,'cylinder',[.065,.065,.15],skin,0,1.49,0);
   const female=index%3!==0;
-  if(female){ell(figure,0,1.73,-.04,.15,.18,.128,hair);ell(figure,0,1.57,-.05,.16,.15,.105,hair);ell(figure,0,1.67,.074,.11,.145,.062,skin);}else{
-   const g=new THREE.SphereGeometry(1,24,12,0,Math.PI*2,0,Math.PI*.47),key='haircap';if(!geometry.has(key))geometry.set(key,g);else g.dispose();const h=new THREE.Mesh(geometry.get(key),meshMaterial(hair));h.position.set(0,1.682,-.003);h.scale.set(.142,.188,.125);figure.add(h);parts.push(h);
+  // Hijab framing the face for women; a short beard on some men.
+  if(female){const scarf=clothMat(['#1f2326','#2d3a4a','#e9e4da','#4b3f3a','#20313a','#5b6b73'][index%6],{repeat:4,sheen:.55});ell(figure,0,1.70,-.05,.151,.198,.15,scarf);ell(figure,0,1.47,-.01,.19,.12,.15,scarf);}else{if(index%2)ell(figure,0,1.585,.04,.104,.06,.075,hair);
+   const g=new THREE.SphereGeometry(1,24,12,0,Math.PI*2,0,Math.PI*.47),key='haircap';if(!geometry.has(key))geometry.set(key,g);else g.dispose();const h=new THREE.Mesh(geometry.get(key),hair);h.position.set(0,1.682,-.003);h.scale.set(.142,.188,.125);figure.add(h);parts.push(h);
   }
   for(const s of [-1,1]){ell(figure,s*.044,1.70,.12,.012,.009,.009,'#222e2c');ell(figure,s*.136,1.67,0,.02,.033,.022,skin);}
   ell(figure,0,1.655,.128,.017,.026,.017,skin);box(figure,0,1.614,.114,.045,.005,.006,'#875e52');
@@ -109,8 +110,9 @@ export function createDrill({scene,facility,renderer,onChange=()=>{},onFocus=()=
  }
  function rescueLitter(person){const root=new THREE.Group();person.root.add(root);root.visible=false;box(root,0,0,0,.82,.05,1.98,'#cf9655');for(const side of [-1,1])box(root,side*.45,.025,0,.035,.04,2.55,'#abbec2');for(const z of [-.5,.45])box(root,0,.045,z,.85,.018,.07,'#436166');return root;}
  function runPose(model,t,moving){model.pose(moving?t*1.75:t,moving);if(moving){model.figure.rotation.x=.14;model.figure.position.y=.035*Math.abs(Math.sin(t*11));}}
+ function beacon(color){const key='beacon'+color;if(!materials.has(key))materials.set(key,new THREE.MeshStandardMaterial({color,emissive:color,emissiveIntensity:2.2,roughness:.3}));return materials.get(key);}
  function ambulance(index){
-  const root=new THREE.Group();roots.add(root);root.visible=false;const white='#eff1e9',dark='#294c59',red='#ba4541',glass=new THREE.MeshPhysicalMaterial({color:'#637f89',transparent:true,opacity:.5,roughness:.13,metalness:.05,clearcoat:.8,clearcoatRoughness:.12});
+  const root=new THREE.Group();roots.add(root);root.visible=false;const white=carPaint('#eff1e9'),dark='#294c59',red=carPaint('#ba4541'),glass=new THREE.MeshPhysicalMaterial({color:'#637f89',transparent:true,opacity:.5,roughness:.13,metalness:.05,clearcoat:.8,clearcoatRoughness:.12});
   function vehicleBox(parent,x,y,z,w,h,d,color){return Math.min(w,h,d)>.1?part(parent,'rounded',[w,h,d,Math.min(.08,Math.min(w,h,d)/4)],color,x,y,z):box(parent,x,y,z,w,h,d,color);}
   vehicleBox(root,0,.47,0,2.25,.2,5.9,'#405256');vehicleBox(root,0,1.04,-.6,2.26,.93,4.5,white);vehicleBox(root,0,1.2,2.1,2.23,1.3,1.52,white);
   for(const s of [-1,1]){vehicleBox(root,s*1.11,1.84,-.5,.1,.58,4.4,white);vehicleBox(root,s*1.16,1.78,-.35,.025,.52,2.6,glass);vehicleBox(root,s*1.125,1.9,1.95,.025,.62,1.23,glass);vehicleBox(root,s*1.14,1.01,-.7,.035,.3,4.45,red);vehicleBox(root,s*1.14,1.52,-.5,.04,.12,.6,red);vehicleBox(root,s*1.145,1.52,-.5,.04,.57,.13,red);}
@@ -120,7 +122,7 @@ export function createDrill({scene,facility,renderer,onChange=()=>{},onFocus=()=
   for(const z of [-2.83,1.32])vehicleBox(root,0,2.3,z,2.15,.13,.12,white);
   vehicleBox(root,0,.76,-2.94,2.25,.22,.1,'#798b8f');vehicleBox(root,0,.8,3.0,2.25,.24,.16,'#75858a');
   for(const s of [-1,1]){vehicleBox(root,s*.78,1.2,2.94,.42,.25,.04,'#fff1c6');vehicleBox(root,s*.85,1.25,-2.96,.18,.5,.05,red);}
-  const blue=[];for(const s of [-1,1])blue.push(vehicleBox(root,s*.6,2.47,1.9,.65,.2,.28,s<0?'#287ff2':'#df4249'));
+  const blue=[];for(const s of [-1,1])blue.push(vehicleBox(root,s*.6,2.47,1.9,.65,.2,.28,beacon(s<0?'#287ff2':'#df4249')));
   const wheels=[];for(const s of [-1,1])for(const z of [-1.95,1.9]){const g=new THREE.Group();g.position.set(s*1.15,.47,z);root.add(g);const tyre=part(g,'cylinder',[.43,.43,.18],'#243135');tyre.rotation.z=Math.PI/2;const hub=part(g,'cylinder',[.22,.22,.19],'#b2c0c0');hub.rotation.z=Math.PI/2;wheels.push(g);}
   for(const s of [-1,1])vehicleBox(root,s*.73,.78,-.85,.42,.12,.55,'#5f8a8d');shadow(root,3,6.6);
   tag(root,'AMBULANCE 0'+(index+1),'#365c63',3.3,2.9);
@@ -284,7 +286,7 @@ export function createDrill({scene,facility,renderer,onChange=()=>{},onFocus=()=
   part(pad,'cylinder',[7.3,7.3,.025],'#e6e6d9',0,.025,0);part(pad,'cylinder',[6.95,6.95,.025],'#43595d',0,.042,0);
   for(const x of [-1.3,1.3])box(pad,x,.063,0,.55,.015,4.3,'#f5f2e5');box(pad,0,.063,0,2.7,.015,.55,'#f5f2e5');
   tag(pad,'مهبط الإخلاء الجوي / HELIPAD','#315968',6.3,.4);
-  const helicopter=new THREE.Group();roots.add(helicopter);const white='#e3e9e5',red='#b73d3b',glass=meshMaterial('#385d6a',.35);
+  const helicopter=new THREE.Group();roots.add(helicopter);const white=carPaint('#e3e9e5'),red=carPaint('#b73d3b'),glass=meshMaterial('#385d6a',.35);
   ell(helicopter,0,1.6,0,1.15,1.05,2.8,white);ell(helicopter,0,1.9,1.72,.96,.65,1.1,glass);
   box(helicopter,0,1.6,-3.7,.35,.45,4.3,white);box(helicopter,0,2.7,-5.35,.12,2.3,.9,red);box(helicopter,0,1.6,-5.0,3,.15,.65,red);
   for(const side of [-1,1]){box(helicopter,side*1.13,1.55,-.3,.035,.3,2.4,red);box(helicopter,side*1.15,1.7,-.4,.04,.7,.18,red);box(helicopter,side*1.14,.28,0,.12,.12,5.4,'#6e8386');for(const z of [-1.4,1.4])box(helicopter,side*.9,.65,z,.1,.8,.1,'#6e8386');}

@@ -1,19 +1,33 @@
 import * as THREE from 'three';
-import {startVisualLab} from './lab-visuals.js';
+import {startVisualLab} from './lab-visuals.js?v=20261029e';
 import {OrbitControls} from 'three/addons/OrbitControls.js';
 import {mergeGeometries} from './vendor/BufferGeometryUtils.js';
-import {buildFacility,roomData,siteLayout} from './facility.js?v=20261028c';
-import {createDrill} from './drill.js';
+import {buildFacility,roomData,siteLayout} from './facility.js?v=20261029e';
+import {createDrill} from './drill.js?v=20261029e';
 import {createDashboard} from './dashboard.js';
 import {stadiumOutline} from './traffic.js';
+import {EffectComposer} from './vendor/postprocessing/EffectComposer.js';
+import {RenderPass} from './vendor/postprocessing/RenderPass.js';
+import {GTAOPass} from './vendor/postprocessing/GTAOPass.js';
+import {OutputPass} from './vendor/postprocessing/OutputPass.js';
 const $=id=>document.getElementById(id);
+// Textures and the HDR environment report through the default manager; mirror it on the loading screen.
+THREE.DefaultLoadingManager.onProgress=(url,loaded,total)=>{const pct=Math.round(loaded/Math.max(total,1)*100),bar=$('load-bar');if(!bar)return;bar.style.width=pct+'%';bar.parentElement.setAttribute('aria-valuenow',pct);$('load-label').textContent=pct+'%';};
 const viewport=$('viewport'),scene=new THREE.Scene();
-scene.background=new THREE.Color('#c8d9e4');scene.fog=new THREE.Fog('#c8d9e4',175,370);
-function updateSceneTheme(){const dark=document.documentElement.dataset.theme==='dark';const color=dark?'#1b302e':'#c8d9e4';scene.background.set(color);scene.fog.color.set(color);if(mode==='overview'){scene.fog.near=dark?350:175;scene.fog.far=dark?700:370;}}
+const backdrop=new THREE.Color('#c8d9e4');scene.background=backdrop;scene.fog=new THREE.Fog('#c8d9e4',175,370);
+function updateSceneTheme(){const dark=document.documentElement.dataset.theme==='dark';const color=dark?'#1b302e':'#c8d9e4';backdrop.set(color);scene.fog.color.set(color);if(mode==='overview'){scene.fog.near=dark?350:175;scene.fog.far=dark?700:370;}}
 new MutationObserver(updateSceneTheme).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
 const camera=new THREE.PerspectiveCamera(48,1,.2,900);
 let renderer;try{renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});}catch(e){$('loading').innerHTML='<h2>المتصفح لا يدعم عرض 3D</h2><p>افتح الرابط في Chrome أو Safari حديث مع تفعيل WebGL.</p>';throw e}
 const mobileScreen=matchMedia('(max-width:800px)').matches;renderer.setPixelRatio(Math.min(devicePixelRatio,mobileScreen?1.5:2));renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.shadowMap.autoUpdate=false;renderer.shadowMap.needsUpdate=true;renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.0;viewport.appendChild(renderer.domElement);
+// Ground-truth ambient occlusion: soft contact shadows where people, beds, furniture and walls meet. Desktop at high quality only.
+const composer=new EffectComposer(renderer,new THREE.WebGLRenderTarget(1,1,{type:THREE.HalfFloatType,samples:4}));composer.addPass(new RenderPass(scene,camera));
+const gtao=new GTAOPass(scene,camera,1,1);gtao.updateGtaoMaterial({radius:.75,distanceExponent:1.4,thickness:1.2,scale:1.15,samples:12,distanceFallOff:1});gtao.updatePdMaterial({lumaPhi:10,depthPhi:2,normalPhi:3,radius:6,rings:2,samples:12});gtao.blendIntensity=.9;
+// Labels, smoke, contact decals and other transparent sprites must not occlude.
+gtao._overrideVisibility=function(){const cache=this._visibilityCache;this.scene.traverse(o=>{if(o.visible&&(o.isSprite||o.isPoints||o.isLine||o.userData.noAO||o.isMesh&&o.material.transparent)){o.visible=false;cache.push(o);}});};
+composer.addPass(gtao);composer.addPass(new OutputPass());
+let aoEnabled=!mobileScreen;
+function setAO(on){aoEnabled=!!on;}
 scene.add(new THREE.HemisphereLight('#e8f2ff','#aaa088',1.35));
 const sun=new THREE.DirectionalLight('#fff0d9',2.7);sun.position.set(-40,72,38);sun.target.position.set(-15,0,10);scene.add(sun.target);sun.castShadow=true;sun.shadow.mapSize.set(mobileScreen?2048:4096,mobileScreen?2048:4096);sun.shadow.camera.left=-100;sun.shadow.camera.right=100;sun.shadow.camera.top=86;sun.shadow.camera.bottom=-90;sun.shadow.camera.near=1;sun.shadow.camera.far=210;sun.shadow.bias=-.00012;sun.shadow.normalBias=.095;scene.add(sun);
 const fill=new THREE.DirectionalLight('#eaf3ff',.6);fill.position.set(20,20,-30);scene.add(fill);
@@ -22,7 +36,8 @@ const skyCanvas=document.createElement('canvas');skyCanvas.width=512;skyCanvas.h
 const facility=buildFacility(scene);
 const orbit=new OrbitControls(camera,renderer.domElement);orbit.enableDamping=true;orbit.dampingFactor=.07;orbit.maxPolarAngle=Math.PI/2.07;orbit.minDistance=5;orbit.maxDistance=650;orbit.target.set(0,0,7);
 let overviewFit=true;
-let mode='overview',yaw=0,pitch=0,keys={},lastTime=0,drag=null,toastTimer,panelsOpen=false;
+let mode='overview',yaw=0,pitch=0,keys={},lastTime=0,lastMap=0,drag=null,toastTimer,panelsOpen=false;
+renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();toast('توقف عرض 3D مؤقتاً بسبب ضغط على كرت الشاشة — أعد تحميل الصفحة أو اختر الجودة الخفيفة');});
 let drill=null,drillSnapshot=null,cameraGoal=null,dashboard=null;
 function stopFollow(){overviewFit=false;cameraGoal=null;if(drill?.active)drill.setFollow(false);}
 orbit.addEventListener('start',stopFollow);
@@ -48,7 +63,10 @@ const places=[
 for(const p of places){const b=document.createElement('button');b.dataset.place=p.id;b.innerHTML='<i class="dot" style="background:'+p.color+'"></i>'+p.name;b.addEventListener('click',()=>go(p));$('destinations').appendChild(b)}
 function optimizeStatic(){
  facility.world.updateMatrixWorld(true);const buckets=new Map();facility.world.traverse(o=>{if(o.isMesh&&!o.isInstancedMesh&&!Array.isArray(o.material)&&!o.material.transparent){let node=o;while(node){if(node.userData.simulationPatient)return;node=node.parent}let ancestor=o;while(ancestor&&!ancestor.userData.actorId)ancestor=ancestor.parent;if(ancestor)o.userData.actorId=ancestor.userData.actorId;const p=new THREE.Vector3().setFromMatrixPosition(o.matrixWorld),key=o.material.uuid+':'+o.castShadow+':'+o.receiveShadow+':'+Math.floor(p.x/24)+':'+Math.floor(p.z/24);let items=buckets.get(key);if(!items){items=[];buckets.set(key,items)}items.push(o)}});
- for(const items of buckets.values()){if(items.length<2)continue;const geoms=items.map(o=>{let g=o.geometry.clone();if(g.index)g=g.toNonIndexed();return g.applyMatrix4(o.matrixWorld)}),merged=mergeGeometries(geoms,false);if(merged){const o=new THREE.Mesh(merged,items[0].material);o.castShadow=items[0].castShadow;o.receiveShadow=items[0].receiveShadow;o.userData.actorIds=[...new Set(items.map(i=>i.userData.actorId).filter(Boolean))];items.forEach(old=>{old.parent.remove(old);if(!old.geometry.userData.shared)old.geometry.dispose()});facility.world.add(o)}geoms.forEach(g=>g.dispose())}
+ for(const items of buckets.values()){if(items.length<2)continue;const geoms=items.map(o=>{let g=o.geometry.clone();if(g.index)g=g.toNonIndexed();return g.applyMatrix4(o.matrixWorld)});
+  // mergeGeometries needs an identical attribute set; mixed sources (extrusions, hand-built ribbons) differ in uv/normal.
+  const withUV=geoms.every(g=>g.attributes.uv);if(!withUV&&['map','bumpMap','normalMap','roughnessMap'].some(k=>items[0].material[k])){geoms.forEach(g=>g.dispose());continue;}for(const g of geoms){for(const name of Object.keys(g.attributes))if(!['position','normal','uv'].includes(name)||name==='uv'&&!withUV)g.deleteAttribute(name);if(!g.attributes.normal)g.computeVertexNormals();g.morphAttributes={};}
+  const merged=mergeGeometries(geoms,false);if(merged){const o=new THREE.Mesh(merged,items[0].material);o.castShadow=items[0].castShadow;o.receiveShadow=items[0].receiveShadow;o.userData.actorIds=[...new Set(items.map(i=>i.userData.actorId).filter(Boolean))];items.forEach(old=>{old.parent.remove(old);if(!old.geometry.userData.shared)old.geometry.dispose()});facility.world.add(o)}geoms.forEach(g=>g.dispose())}
 }
 optimizeStatic();
 function fitOverview(){
@@ -56,7 +74,7 @@ function fitOverview(){
  for(const x of [-73,117])for(const z of [-25,120])for(const y of [0,8]){const v=new THREE.Vector3(x,y,z).sub(target);distance=Math.max(distance,Math.abs(v.dot(right))/tanH+v.dot(back),Math.abs(v.dot(up))/tanV+v.dot(back));}
  distance*=1.08;camera.position.copy(target).addScaledVector(back,distance);orbit.target.copy(target);orbit.update();scene.fog.near=Math.max(document.documentElement.dataset.theme==='dark'?350:175,distance*1.15);scene.fog.far=Math.max(document.documentElement.dataset.theme==='dark'?700:370,distance*2);
 }
-function resize(){const w=viewport.clientWidth,h=viewport.clientHeight;renderer.setSize(w,h);camera.aspect=w/h;camera.updateProjectionMatrix();if(mode==='overview'&&overviewFit)fitOverview();}
+function resize(){const w=viewport.clientWidth,h=viewport.clientHeight;renderer.setSize(w,h);composer.setPixelRatio(renderer.getPixelRatio());composer.setSize(w,h);camera.aspect=w/h;camera.updateProjectionMatrix();if(mode==='overview'&&overviewFit)fitOverview();}
 
 addEventListener('resize',resize);new ResizeObserver(resize).observe(viewport);
 function overview(){overviewFit=true;mode='overview';document.body.classList.remove('walking');orbit.enabled=true;camera.near=.3;camera.updateProjectionMatrix();camera.position.set(55,101,132);orbit.target.set(-20,0,17);orbit.update();$('overview-btn').classList.add('active');$('walk-btn').classList.remove('active');$('crosshair').hidden=true;$('mobile-controls').hidden=true;$('mode-help').textContent='اسحب للدوران · مرّر للتقريب';$('location').textContent='عرض المرفق كاملًا';$('roof-toggle').checked=false;facility.roofs.visible=false;renderer.shadowMap.needsUpdate=true;document.querySelectorAll('[data-place]').forEach(b=>b.classList.remove('selected'));resize();}
@@ -66,7 +84,10 @@ function go(p){mode='walk';scene.fog.near=175;scene.fog.far=370;document.body.cl
 $('overview-btn').onclick=()=>{stopFollow();overview()};$('walk-btn').onclick=()=>{stopFollow();go(places[0])};
 $('roof-toggle').onchange=e=>{facility.roofs.visible=e.target.checked;renderer.shadowMap.needsUpdate=true};$('smoke-toggle').onchange=e=>{facility.smoke.visible=e.target.checked;facility.fireLight.visible=e.target.checked};
 function updateLocation(){if(mode!=='walk')return;const x=camera.position.x,z=camera.position.z;let title='الساحة الخارجية';if(z<4&&z>-18&&Math.abs(x)<10)title='الاستقبال والمركز الرئيسي';if(z<-18&&Math.abs(x)<10)title='المصلى';if(z>4&&z<12){const r=roomData.find(r=>Math.abs(x-r.x)<3.25);if(r)title='Zone '+r.zone+' · '+r.id+' — غرفة محاكاة'}if(z>=0&&z<4&&Math.abs(x)>10)title=x<0?'ممر الجناح الأيسر':'ممر الجناح الأيمن';if(x>43&&z>-1&&z<4)title='المخرج الجانبي للكلية';if(x>43&&x<59&&z>=-8&&z<=12)title='جناح الحريق المتصل بالكلية';for(const t of facility.triages)if(Math.abs(x-t.x)<t.w/2+1&&Math.abs(z-t.z)<t.d/2+1)title=t.title.split('\n')[1];$('location').textContent=title;}
-addEventListener('keydown',e=>{if(['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)||panelsOpen||document.querySelector('dialog[open]'))return;keys[e.code]=true;if(mode==='walk'&&['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code))e.preventDefault();if(e.code==='Escape')drag=null;});
+addEventListener('keydown',e=>{if(['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)||panelsOpen||document.querySelector('dialog[open]'))return;
+ // Playback shortcuts while watching the drill: Space play/pause, arrows ±10 s (timeline runs left to right).
+ if(drill?.active&&mode!=='walk'&&!e.ctrlKey&&!e.metaKey&&!e.altKey){if(e.code==='Space'&&!['BUTTON','SUMMARY'].includes(document.activeElement.tagName)){e.preventDefault();drill.playing?drill.pause():drill.play();return;}if(e.code==='ArrowRight'||e.code==='ArrowLeft'){e.preventDefault();drill.seek(drill.clock+(e.code==='ArrowRight'?10:-10)*(e.shiftKey?6:1));return;}}
+ keys[e.code]=true;if(mode==='walk'&&['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code))e.preventDefault();if(e.code==='Escape')drag=null;});
 addEventListener('keyup',e=>keys[e.code]=false);addEventListener('blur',()=>{keys={};drag=null});
 renderer.domElement.addEventListener('pointerdown',e=>{if(mode==='walk'&&!panelsOpen){drag={x:e.clientX,y:e.clientY,id:e.pointerId};renderer.domElement.setPointerCapture(e.pointerId)}});
 renderer.domElement.addEventListener('pointermove',e=>{if(mode==='walk'&&drag&&drag.id===e.pointerId){yaw-=(e.clientX-drag.x)*.004;pitch=THREE.MathUtils.clamp(pitch-(e.clientY-drag.y)*.003,-1.1,1.1);drag.x=e.clientX;drag.y=e.clientY;}});
@@ -112,7 +133,11 @@ function updateDrill(s){
  $('drill-follow').checked=s.follow;$('drill-speed').value=s.speed;$('drill-hud').classList.toggle('is-playing',s.playing);
  for(const [id,n,total] of [['classified',s.classified,30],['green',s.green,12],['yellow',s.yellow,0],['red',s.red,1],['black',s.black,2]])$('drill-'+id).innerHTML=n+(total?'<small>/'+total+'</small>':'');
  dashboard?.update(s);updateTimeline(s);
- $('fleet-complete').textContent=s.vehicles.reduce((n,v)=>n+v.completedTrips,0)+' / 16';for(const v of s.vehicles){const card=$('fleet-'+v.id);card.classList.toggle('on-loop',v.onLoop);card.querySelector('b').textContent=v.completedTrips+' / 2';card.querySelector('small').textContent=v.patient?v.patient+' · رحلة '+v.tripNumber:v.completedTrips===2?'اكتمل النقل':v.tripNumber?'عودة / انتظار الدور':'في طابور الجهة المقابلة';}
+ const trips=s.vehicles.reduce((n,v)=>n+v.completedTrips,0);
+ // Compact live readout in the always-visible playback bar, so progress is readable without opening the side panel.
+ $('live-stage').textContent=s.stage;for(const [id,n] of [['classified',s.classified],['green',s.green],['yellow',s.yellow],['black',s.blackDelivered],['beds',s.hospital],['fleet',trips]]){const el=$('live-'+id);if(el.textContent!==String(n)){el.textContent=n;el.parentElement.classList.remove('bump');void el.offsetWidth;el.parentElement.classList.add('bump');}}
+ $('drill-progress').style.setProperty('--p',(s.duration?s.time/s.duration*100:0)+'%');
+ $('fleet-complete').textContent=trips+' / 16';for(const v of s.vehicles){const card=$('fleet-'+v.id);card.classList.toggle('on-loop',v.onLoop);card.querySelector('b').textContent=v.completedTrips+' / 2';card.querySelector('small').textContent=v.patient?v.patient+' · رحلة '+v.tripNumber:v.completedTrips===2?'اكتمل النقل':v.tripNumber?'عودة / انتظار الدور':'في طابور الجهة المقابلة';}
  for(const [bed,id] of [['b4','R01'],['c2','Y01']]){const p=s.patients.find(p=>p.id===id),arrived=p?.state==='bed';$('bed-'+bed).innerHTML=bed.toUpperCase()+' <i>'+(['referral-transfer','helipad-transfer','airborne'].includes(p?.state)?'أحيلت الحالة '+id:arrived?'وصلت '+id:['loading-walk','loading','aboard','unloading','reception','hospital-walk','bed-transfer'].includes(p?.state)?id+' في الطريق':'بانتظار '+id)+'</i>';$('bed-'+bed).classList.toggle('arrived',arrived);}
 }
 function switchSimulation(open){document.body.classList.toggle('simulation-view',open);$('simulation-panel').hidden=!open;$('panel').hidden=open;$('simulation-tab')?.classList.toggle('selected',open);cameraGoal=null;resize();}
@@ -136,16 +161,17 @@ const heatOption=document.createElement('option');heatOption.value='heat';heatOp
 function buildTimeline(){const chosen=$('event-patient').value;$('event-list').replaceChildren();for(const e of drill.events.filter(e=>chosen==='all'||e.patient===chosen||chosen==='heat'&&e.view==='heat')){const button=document.createElement('button');button.dataset.time=e.time;button.innerHTML='<time dir="ltr">'+clockLabel(e.time)+'</time><span>'+e.label+'</span><i>↗</i>';button.onclick=()=>focusEvent(e);$('event-list').append(button);}updateTimeline(drill.getSnapshot());}
 $('event-patient').onchange=buildTimeline;buildTimeline();
 const ray=new THREE.Raycaster(),pointer=new THREE.Vector2();let screenDown=null;renderer.domElement.addEventListener('pointerdown',e=>screenDown={x:e.clientX,y:e.clientY});renderer.domElement.addEventListener('pointerup',e=>{if(!screenDown||Math.hypot(e.clientX-screenDown.x,e.clientY-screenDown.y)>6)return;const r=renderer.domElement.getBoundingClientRect();pointer.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(pointer,camera);if(ray.intersectObject(dashboard.screen).length)dashboard.open();screenDown=null;});
+$('help').querySelector('.help-content').insertAdjacentHTML('beforeend','<p><b>اختصارات المحاكاة</b><br><kbd>Space</kbd> تشغيل وإيقاف مؤقت · <kbd>→</kbd> / <kbd>←</kbd> تقديم أو رجوع 10 ثوانٍ · <kbd>Shift</kbd> مع الأسهم دقيقة كاملة.</p>');
 $('help').querySelector('.help-content').insertAdjacentHTML('afterbegin','<p><b>فرضية الحريق والتدافع</b><br>جناح الحريق متصل بمبنى الغرف وبابه يواجه ساحة الفرز، والكلية تمثل المستشفى الرئيسي. 30 حالة: أحمر واحد، 15 أصفر، 12 أخضر، ووَفاتان بالأسود. يبدأ بعض منظمي الإخلاء الخمسة من الداخل حاملين R01 وY01 على نقالات يدوية، ويساعد الخامس Y02 على المشي. يخرج أطباء الفرز الأربعة من داخل الكلية عبر بابها الرئيسي والمنحدر، ويمشون حاملين حقائب الإسعاف إلى موقع الفرز. ينطلق منظمو الأخضر من الخيام بالركض ويلتقون بالحالات بعد الفرز ويرافقونها إلى 8 فرق راجلة، في كل منها 4 طلاب طب. ينتظر المصابون على الأرض جلوساً أو استلقاءً مع الأطباء، وتأتي النقالات ذات العجلات من 8 إسعافات. تُنقل R01 أولاً إلى B4 ثم Y01 إلى C2، ويكمل الأصفر بقية الأسرّة الـ16، مع تسليم الحالات عند استقبال الطوارئ. يظهر الإجهاد الحراري لبعض الفرق بالتزامن مع آخر وصول. بعد استلام الحالات كلها، تُحال R01 بمركبة إسعاف إلى المروحية. كل إسعاف ينقل حالتين في رحلتين منفصلتين، وحالة واحدة في كل رحلة. تنتظر الإسعافات في الجهة المقابلة على الضلع البعيد من الدائرة، وتتقدم بالترتيب إلى موقف تحميل واحد عند الأصفر. تسير بالحالة إلى موقف بمحاذاة مدخل المستشفى، وتصل وتغادر للأمام. تواصل اللفة الخارجية إلى طابور الجهة المقابلة، وتستكمل المنعطف الأيمن إلى الأصفر في دورها التالي. الساحة متصلة بالطريق دون فاصل. يمكنك فتح «رحلات الإسعاف» لمتابعة كل مركبة، أو اختيار كاميرا «الدوار». يمكن إيقاف كل مشهد واستئنافه والرجوع إليه من الخط الزمني. أعداد الإصابات الثانوية والتوقيت والمهبط افتراضية للعرض وليست خطة تشغيل ميدانية.</p>');
 updateDrill(drill.getSnapshot());
 $('share-btn').onclick=async()=>{const url=location.origin+location.pathname;try{if(navigator.share&&matchMedia('(pointer:coarse)').matches)await navigator.share({title:'UQUDCM — جولة 3D',url});else{await navigator.clipboard.writeText(url);toast('تم نسخ الرابط — شاركيه مع زملائك')}}catch(e){if(e.name!=='AbortError')toast('الرابط: '+url)}};
 function step(dt){let forward=(keys.KeyW||keys.ArrowUp?1:0)-(keys.KeyS||keys.ArrowDown?1:0),side=(keys.KeyD||keys.ArrowRight?1:0)-(keys.KeyA||keys.ArrowLeft?1:0);const length=Math.hypot(forward,side)||1;forward/=length;side/=length;const speed=(keys.ShiftLeft||keys.ShiftRight?5.5:3)*dt;const dx=(-Math.sin(yaw)*forward+Math.cos(yaw)*side)*speed,dz=(-Math.cos(yaw)*forward-Math.sin(yaw)*side)*speed;const n=Math.max(1,Math.ceil(speed/.12));for(let i=0;i<n;i++){if(!isBlocked(camera.position.x+dx/n,camera.position.z))camera.position.x+=dx/n;if(!isBlocked(camera.position.x,camera.position.z+dz/n))camera.position.z+=dz/n;}camera.position.y=1.68+facility.groundHeight(camera.position.x,camera.position.z);camera.rotation.set(pitch,yaw,0);}
 function frame(wallMs){const elapsed=lastTime?Math.min((wallMs-lastTime)/1000,.25):0,dt=Math.min(elapsed,.05);lastTime=wallMs;drill.tick(elapsed);const ms=drill.active?drill.clock*1000:wallMs;if(mode==='walk'&&!panelsOpen&&!document.querySelector('dialog[open]')){step(dt);updateLocation()}else if(mode==='overview'){if(cameraGoal){const u=THREE.MathUtils.clamp((wallMs-cameraGoal.started)/1400,0,1),a=u*u*(3-2*u);camera.position.lerpVectors(cameraGoal.fromEye,cameraGoal.eye,a);orbit.target.lerpVectors(cameraGoal.fromTarget,cameraGoal.target,a);if(u===1)cameraGoal=null;}orbit.update();}
  facility.smoke.children.forEach(o=>{if(o.userData.fire){o.children.forEach((flame,i)=>{flame.scale.set(.9+Math.sin(ms*.01+i)*.11,2+Math.sin(ms*.007+i)*.24,1);flame.material.opacity=.68+Math.sin(ms*.009+i)*.18});return;}const t=((ms*.000052+o.userData.seed)%1);o.position.set(59.4+t*4.5+o.userData.drift*t*.7,1+t*10.5,2+t*1.2+o.userData.drift*t);o.scale.set(1.5+t*7,1.8+t*6.5,1);o.material.opacity=Math.sin(Math.PI*t)*.7;});
- facility.fireLight.intensity=4.2+Math.sin(ms*.017)*.65;minimap();renderer.render(scene,camera);requestAnimationFrame(frame)
+ facility.fireLight.intensity=4.2+Math.sin(ms*.017)*.65;if(wallMs-lastMap>66){lastMap=wallMs;minimap();}if(aoEnabled)composer.render(dt);else renderer.render(scene,camera);requestAnimationFrame(frame)
 }
-$('quality').onchange=e=>{const high=e.target.value==='high';renderer.setPixelRatio(Math.min(devicePixelRatio,high?(mobileScreen?1.5:2):1));sun.shadow.mapSize.set(high?(mobileScreen?2048:4096):1024,high?(mobileScreen?2048:4096):1024);if(sun.shadow.map){sun.shadow.map.dispose();sun.shadow.map=null;}renderer.shadowMap.needsUpdate=true;resize();};
+$('quality').onchange=e=>{const high=e.target.value==='high';setAO(high&&!mobileScreen);const box=$('lab-ao');if(box)box.checked=aoEnabled;renderer.setPixelRatio(Math.min(devicePixelRatio,high?(mobileScreen?1.5:2):1));sun.shadow.mapSize.set(high?(mobileScreen?2048:4096):1024,high?(mobileScreen?2048:4096):1024);if(sun.shadow.map){sun.shadow.map.dispose();sun.shadow.map=null;}renderer.shadowMap.needsUpdate=true;resize();};
 overview();requestAnimationFrame(frame);
-window.facilityDebug={stats:facility.stats,population:facility.population,crowd:facility.crowd,world:facility.world,triages:facility.triages,exit:facility.exit,roomData,siteLayout,scene,orbit,camera,colliders:facility.colliders,isBlocked,go,overview,get mode(){return mode},renderer,drill,drillView,dashboard,groundHeight:facility.groundHeight,switchSimulation,focusEvent,patientVisuals:facility.patientVisuals};
+window.facilityDebug={stats:facility.stats,population:facility.population,crowd:facility.crowd,world:facility.world,triages:facility.triages,exit:facility.exit,roomData,siteLayout,scene,orbit,camera,colliders:facility.colliders,isBlocked,go,overview,get mode(){return mode},renderer,drill,drillView,dashboard,groundHeight:facility.groundHeight,switchSimulation,focusEvent,patientVisuals:facility.patientVisuals,setAO,get ao(){return aoEnabled},gtao};
 startVisualLab({scene,renderer,sun,fill,facility,skyTex}).finally(()=>setTimeout(()=>{$('loading').style.opacity=0;setTimeout(()=>$('loading').remove(),600)},200));
 

@@ -6,7 +6,7 @@ def request(url):
  req=urllib.request.Request(url,headers={'User-Agent':'UQUDCM-Visual-Lab/1.0 (local architectural experiment)'})
  return urllib.request.urlopen(req,timeout=45).read()
 sources=[];jobs=[]
-for asset in ['asphalt_01','asphalt_02','concrete_wall_001','wood_table_001']:
+for asset in ['asphalt_01','asphalt_02','concrete_wall_001','wood_table_001','interior_tiles','terrazzo_tiles','painted_plaster_wall','terry_cloth','leafy_grass']:
  try:
   data=json.loads(request('https://api.polyhaven.com/files/'+asset))
   for channel,source_key in [('diff','Diffuse'),('nor_gl','nor_gl'),('rough','Rough')]:
@@ -18,9 +18,10 @@ for asset in ['asphalt_01','asphalt_02','concrete_wall_001','wood_table_001']:
  except Exception as e:print(asset+': '+str(e))
 data=json.loads(request('https://api.polyhaven.com/files/quadrangle_sunny'))
 entry=data['hdri']['1k']['hdr'];url=entry['url'];target=folder/'quadrangle_sunny_1k.hdr';jobs.append((url,target));sources.append({'asset':'quadrangle_sunny','file':target.relative_to(root).as_posix(),'source':url,'page':'https://polyhaven.com/a/quadrangle_sunny','license':'CC0 1.0'})
-for name in ['loaders/HDRLoader.js','geometries/RoundedBoxGeometry.js']:
+for name in ['loaders/HDRLoader.js','geometries/RoundedBoxGeometry.js','postprocessing/EffectComposer.js','postprocessing/RenderPass.js','postprocessing/ShaderPass.js','postprocessing/Pass.js','postprocessing/MaskPass.js','postprocessing/OutputPass.js','postprocessing/GTAOPass.js','shaders/GTAOShader.js','shaders/CopyShader.js','shaders/OutputShader.js','shaders/PoissonDenoiseShader.js','math/SimplexNoise.js']:
  url='https://raw.githubusercontent.com/mrdoob/three.js/r180/examples/jsm/'+name
- target=root/'vendor'/Path(name).name;jobs.append((url,target));sources.append({'asset':Path(name).name,'file':target.relative_to(root).as_posix(),'source':url,'license':'MIT — Three.js'})
+ # Post-processing modules keep their folder so their relative imports resolve.
+ target=root/'vendor'/(Path(name).name if name.startswith(('loaders/','geometries/')) else name);target.parent.mkdir(parents=True,exist_ok=True);jobs.append((url,target));sources.append({'asset':Path(name).name,'file':target.relative_to(root).as_posix(),'source':url,'license':'MIT — Three.js'})
 def save(job):
  url,target=job
  if not target.exists():target.write_bytes(request(url))

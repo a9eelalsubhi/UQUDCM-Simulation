@@ -6,8 +6,9 @@ bar.innerHTML = `<div class="bar-modes"></div><details class="bar-menu" id="plac
 document.body.append(bar);
 const themeButton=document.createElement('button');themeButton.id='theme-toggle';themeButton.type='button';bar.querySelector('#settings-menu').after(themeButton);
 let storedTheme=null;try{storedTheme=localStorage.getItem('uqudcm-theme');}catch{}
-function applyTheme(dark){document.documentElement.dataset.theme=dark?'dark':'light';themeButton.textContent=dark?'☀ الوضع الفاتح':'☾ الوضع الداكن';themeButton.setAttribute('aria-label',themeButton.textContent);themeButton.setAttribute('aria-pressed',String(dark));try{localStorage.setItem('uqudcm-theme',dark?'dark':'light');}catch{}}
-themeButton.addEventListener('click',()=>applyTheme(document.documentElement.dataset.theme!=='dark'));applyTheme(storedTheme==='dark');
+function applyTheme(dark,remember=true){document.documentElement.dataset.theme=dark?'dark':'light';const label=dark?'الوضع الفاتح':'الوضع الداكن';themeButton.innerHTML='<span aria-hidden="true">'+(dark?'☀':'☾')+'</span><span class="theme-label">'+label+'</span>';themeButton.setAttribute('aria-label',label);themeButton.title=label;themeButton.setAttribute('aria-pressed',String(dark));if(remember)try{localStorage.setItem('uqudcm-theme',dark?'dark':'light');}catch{}}
+// First visit follows the device setting; an explicit choice is remembered.
+themeButton.addEventListener('click',()=>applyTheme(document.documentElement.dataset.theme!=='dark'));applyTheme(storedTheme?storedTheme==='dark':matchMedia('(prefers-color-scheme: dark)').matches,false);
 bar.querySelector('.bar-modes').append(document.querySelector('#panel .segmented'));
 $('places-slot').append($('destinations'));
 const settings = $('settings-slot');
@@ -26,3 +27,4 @@ const closePanel=document.createElement('button');closePanel.className='panel-co
 function updateMode(){const active=document.body.classList.contains('simulation-view');detailsButton.hidden=!active;if(!active)simPanel.classList.remove('expanded');}
 new MutationObserver(updateMode).observe(document.body,{attributes:true,attributeFilter:['class']});updateMode();
 document.addEventListener('click',e=>{for(const menu of document.querySelectorAll('.bar-menu, .camera-menu'))if(menu.open&&!menu.contains(e.target))menu.open=false;});
+document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;for(const menu of document.querySelectorAll('.bar-menu[open], .camera-menu[open]')){menu.open=false;menu.querySelector('summary').focus();}});

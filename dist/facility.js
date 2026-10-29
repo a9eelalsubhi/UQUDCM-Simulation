@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {labSurface,surfaceUV,foliage,humanTorso} from './lab-visuals.js';
+import {labSurface,surfaceUV,foliage,humanTorso,cloth as clothMat,skin as skinMat,hair as hairMat,plastic} from './lab-visuals.js?v=20261029e';
 import {ambulanceLoop,stadiumOutline,lapPoints,pathLength} from './traffic.js';
 export const roomData=[
  {id:'A1/A2',zone:'A',x:-39.75,color:'#df292d'},{id:'A3/A4',zone:'A',x:-33.25,color:'#df292d'},
@@ -37,7 +37,10 @@ export function buildFacility(scene){
   const m=new THREE.MeshStandardMaterial({map:t,roughness:kind==='wood'?.48:.88,bumpMap:t,bumpScale:kind==='asphalt'?.025:.006});return m;
  }
  const white=mat('#f4f5f1',0,.5),beige=surface('concrete','#cfbfa4',3,2),wood=surface('wood','#5a3e2c'),steel=mat('#bac7ca',.82,.24),dark=mat('#334b50'),rubber=mat('#23282c',0,.9),red=mat('#b53935');
- const floor=surface('tile','#e1e3df',8,4),lobbyFloor=surface('tile','#e1e3df',6,9),asphalt=surface('asphalt','#48535b',36,20),paving=surface('tile','#bcaf98',7,4),terrain=surface('asphalt','#c9c6b0',22,18);
+ const plaster=labSurface('plaster','#edece3')||mat('#edece3');
+ // Privacy curtains: light hospital fabric, double sided.
+ const curtainMat=clothMat('#e9f0f0',{repeat:6,sheen:.5}).clone();curtainMat.side=THREE.DoubleSide;
+ const floor=surface('tile','#e1e3df',8,4),lobbyFloor=surface('lobby','#e1e3df',6,9),asphalt=surface('asphalt','#48535b',36,20),paving=surface('tile','#bcaf98',7,4),terrain=surface('asphalt','#c9c6b0',22,18);
  const fabric=surface('fabric','#6d7981');
  function roundedBox(x,y,z,w,h,d,m,parent=world,r=.05){
   r=Math.min(r,w/4,h/4,d/4);const shape=new THREE.Shape(),a=w/2-r,b=h/2-r;
@@ -49,7 +52,15 @@ export function buildFacility(scene){
   if(!contactMaterial){const c=document.createElement('canvas');c.width=c.height=64;const q=c.getContext('2d'),grad=q.createRadialGradient(32,32,1,32,32,32);grad.addColorStop(0,'rgba(11,25,27,.25)');grad.addColorStop(1,'rgba(11,25,27,0)');q.fillStyle=grad;q.fillRect(0,0,64,64);contactMaterial=new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(c),transparent:true,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-2});}
   const o=mesh(new THREE.PlaneGeometry(w,d),contactMaterial,x,.11,z,parent);o.rotation.x=-Math.PI/2;noShadow(o);
  }
+ // Crowd figures are ~1.7 m tall and seen from afar; lighter tessellation keeps the silhouette at a fraction of the triangles.
+ function crowdDetail(g){
+  const p=g.parameters;
+  if(g.type==='SphereGeometry'&&p.widthSegments>14){g.dispose();return new THREE.SphereGeometry(p.radius,14,10,p.phiStart,p.phiLength,p.thetaStart,p.thetaLength);}
+  if(g.type==='CylinderGeometry'&&p.radialSegments>10){g.dispose();return new THREE.CylinderGeometry(p.radiusTop,p.radiusBottom,p.height,10,p.heightSegments,p.openEnded);}
+  return g;
+ }
  function mesh(g,m,x,y,z,parent=world){
+  if(parent.userData.isPerson)g=crowdDetail(g);
   surfaceUV(g,m);
   if(parent.userData.isPerson){const key=g.userData.instanceKey||(g.type+JSON.stringify(g.parameters));const previous=peopleGeometry.get(key);if(previous){g.dispose();g=previous;}else {g.userData.shared=true;peopleGeometry.set(key,g);}}
   const o=new THREE.Mesh(g,m);o.position.set(x,y,z);o.castShadow=!(g.type==='BoxGeometry'&&g.parameters.height<.09);o.receiveShadow=true;parent.add(o);return o;
@@ -59,7 +70,7 @@ export function buildFacility(scene){
  function sphere(x,y,z,r,m,parent=world){return mesh(new THREE.SphereGeometry(r,20,14),typeof m==='string'?mat(m):m,x,y,z,parent)}
  function rod(a,b,r,m,parent=world){const av=new THREE.Vector3(...a),bv=new THREE.Vector3(...b),delta=bv.clone().sub(av);const o=cyl(...av.clone().add(bv).multiplyScalar(.5).toArray(),r,delta.length(),m,parent);o.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),delta.normalize());return o}
  function block(x,z,w,d){colliders.push({minX:x-w/2-.22,maxX:x+w/2+.22,minZ:z-d/2-.22,maxZ:z+d/2+.22})}
- function wall(x,z,w,d,h=3.4,outer=false){box(x,h/2,z,w,h,d,outer?beige:mat('#edece3'));block(x,z,w,d);box(x,.16,z,w,.22,d+.025,mat('#c5c9bd'));}
+ function wall(x,z,w,d,h=3.4,outer=false){box(x,h/2,z,w,h,d,outer?beige:plaster);block(x,z,w,d);box(x,.16,z,w,.22,d+.025,mat('#c5c9bd'));}
  function label(text,x,y,z,w=2.5,h=.6,bg='#26483d',fg='#ffffff',parent=world,rot=0){
   const key=text+bg+fg;let texture=texCache.get(key);
   if(!texture){const c=document.createElement('canvas');c.width=1024;c.height=256;const ctx=c.getContext('2d');ctx.fillStyle=bg;ctx.fillRect(0,0,1024,256);ctx.fillStyle=fg;ctx.textAlign='center';ctx.textBaseline='middle';const lines=text.split('\n');ctx.font='bold '+(lines.length>1?65:85)+'px Arial, Tahoma';lines.forEach((line,i)=>ctx.fillText(line,512,128+(i-(lines.length-1)/2)*85,960));texture=new THREE.CanvasTexture(c);texture.colorSpace=THREE.SRGBColorSpace;texCache.set(key,texture)}
@@ -77,22 +88,23 @@ export function buildFacility(scene){
  function iv(x,z,parent=world){cyl(x,1.1,z,.018,2.15,steel,parent);for(let j=0;j<4;j++){const t=j*Math.PI/2;rod([x,.12,z],[x+Math.cos(t)*.32,.09,z+Math.sin(t)*.32],.02,steel,parent)}rod([x-.25,2.15,z],[x+.25,2.15,z],.015,steel,parent);box(x-.15,1.88,z,.18,.36,.07,mat('#c0dbea',.1,.2),parent);rod([x-.15,1.7,z],[x-.22,.95,z+.2],.005,white,parent)}
  function bed(x,z,caseId){
   const g=new THREE.Group();g.position.set(x,0,z);world.add(g);stats.beds++;register(g,'patient-'+caseId,'patient','clinical',caseId);
-  box(0,.59,0,1.22,.12,2.45,steel,g);roundedBox(0,.73,0,1.2,.25,2.4,white,g,.09);contact(0,0,2.1,3.5,g);
+  box(0,.59,0,1.22,.12,2.45,steel,g);roundedBox(0,.73,0,1.2,.25,2.4,plastic('#eef0ea',.2),g,.09);roundedBox(0,.865,.05,1.16,.03,2.2,clothMat('#f6f7f2',{size:.3,sheen:.4}),g,.012);contact(0,0,2.1,3.5,g);
   for(const a of [-.49,.49])for(const b of [-.91,.91]){box(a,.33,b,.06,.5,.06,steel,g);sphere(a,.12,b,.12,rubber,g)}
   for(const b of [-1.24,1.24]){box(0,1,b,1.26,.46,.09,white,g);box(0,1.19,b,.6,.045,.095,steel,g)}
   for(const a of [-.62,.62]){for(const b of [-.7,.7])box(a,.95,b,.035,.4,.035,steel,g);box(a,1.12,0,.035,.035,1.4,steel,g)}
-  roundedBox(0,.91,-.88,.8,.14,.4,'#e6e9df',g,.07);
+  roundedBox(0,.93,-.88,.8,.16,.42,clothMat('#eef1ec',{size:.3,sheen:.5}),g,.07);
   const patientNode=new THREE.Group();patientNode.userData.simulationPatient=true;g.add(patientNode);patientVisuals.push(patientNode);bedsByCase[caseId]={group:g,patientNode};
-  const skin=mat('#c6a185');const head=sphere(0,1.09,-.68,.15,skin,patientNode);head.scale.set(.86,.92,1.12);for(const a of [-1,1]){const eye=rod([a*.038,1.225,-.70],[a*.074,1.218,-.70],.004,dark,patientNode);noShadow(eye);}sphere(0,1.235,-.65,.015,skin,patientNode);rod([-.025,1.218,-.59],[.025,1.218,-.59],.003,mat('#8a6858'),patientNode);
-  let o=mesh(new THREE.CapsuleGeometry(.19,.38,6,14),skin,0,.99,-.17,patientNode);o.rotation.x=Math.PI/2;
-  for(const a of [-1,1]){rod([a*.25,1,-.38],[a*.31,.96,.14],.065,skin,patientNode);rod([a*.12,.98,.22],[a*.14,.94,.84],.075,skin,patientNode)}
-  roundedBox(0,1.025,.4,.88,.065,.76,mat('#c0d3da'),g,.025);for(const side of [-1,1])rod([side*.52,.64,-.9],[side*.52,.64,.9],.012,dark,patientNode);
+  const skin=skinMat('#c49c80'),gown=clothMat('#9cc0cc',{repeat:4});const head=sphere(0,1.09,-.68,.15,skin,patientNode);head.scale.set(.86,.92,1.12);for(const a of [-1,1]){const eye=rod([a*.038,1.225,-.70],[a*.074,1.218,-.70],.004,dark,patientNode);noShadow(eye);}sphere(0,1.235,-.65,.015,skin,patientNode);rod([-.025,1.218,-.59],[.025,1.218,-.59],.003,mat('#8a6858'),patientNode);
+  let o=mesh(new THREE.CapsuleGeometry(.19,.38,6,14),gown,0,.99,-.17,patientNode);o.rotation.x=Math.PI/2;
+  for(const a of [-1,1]){rod([a*.25,1,-.38],[a*.31,.96,.14],.065,skin,patientNode);rod([a*.12,.98,.22],[a*.14,.94,.84],.075,gown,patientNode);noShadow(sphere(a*.31,.96,.17,.05,skin,patientNode));}
+  // Folded blanket with a turned-down hem over the lower body.
+  roundedBox(0,1.025,.4,.88,.065,.76,clothMat('#b9cfd6',{size:.3}),g,.025);roundedBox(0,1.06,.05,.9,.03,.12,clothMat('#f3f4ef',{size:.3}),g,.012);for(const side of [-1,1])rod([side*.52,.64,-.9],[side*.52,.64,.9],.012,dark,patientNode);
   block(x,z,1.25,2.5);
  }
  function supplies(x,z){box(x,.7,z,.68,.035,.55,steel);box(x,.28,z,.68,.025,.55,steel);for(const a of [-.29,.29])for(const b of [-.23,.23])box(x+a,.4,z+b,.025,.65,.025,steel);box(x-.17,.76,z,.21,.09,.26,'#d7e1e7');box(x+.16,.76,z,.23,.1,.22,'#f3e2c6');cyl(x,.81,z+.16,.05,.17,'#c1dfe7');label('IV · AIRWAY',x,.92,z+.29,.66,.2,'#edf4ef','#244f45')}
  let peopleCount=0;
  function person(x,z,coat=true,arm='#d44a43',angle=0,config={}){
-  const g=new THREE.Group();g.position.set(x,0,z);g.rotation.y=angle;g.userData.isPerson=true;world.add(g);if(!config.id)throw new Error('Unassigned person');register(g,config.id,config.role,config.area,config.station);const female=peopleCount++%3!==0,skin=mat(['#c79d7e','#b2876b','#d4b196'][peopleCount%3],0,.65),uniform=mat(config.color||(coat?'#f1f2ee':'#285367'),0,.85),pants=mat('#263841'),hair=mat('#262321');
+  const g=new THREE.Group();g.position.set(x,0,z);g.rotation.y=angle;g.userData.isPerson=true;world.add(g);if(!config.id)throw new Error('Unassigned person');register(g,config.id,config.role,config.area,config.station);const female=peopleCount++%3!==0,skin=skinMat(['#c08f6c','#a8795c','#cfa685','#8f6248','#b88566'][peopleCount%5]),uniform=clothMat(config.color||(coat?'#f1f2ee':'#285367')),pants=clothMat(['#263841','#2c2f33','#33404a'][peopleCount%3]),hair=hairMat('#1d1b19');
   function ellipsoid(x,y,z,rx,ry,rz,m){const o=sphere(x,y,z,1,m,g);o.scale.set(rx,ry,rz);return o}
   function limb(a,b,ra,rb,m){const av=new THREE.Vector3(...a),bv=new THREE.Vector3(...b),v=bv.clone().sub(av);const o=mesh(new THREE.CylinderGeometry(rb,ra,v.length(),16),m,...av.clone().add(bv).multiplyScalar(.5).toArray(),g);o.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),v.normalize());ellipsoid(...a,ra,ra,ra,m);ellipsoid(...b,rb,rb,rb,m)}
   for(const side of [-1,1]){const x=side*.115;if(config.floorSeated){limb([x,.16,-.04],[x,.14,.35],.105,.082,pants);limb([x,.14,.35],[x,.12,.73],.082,.065,pants);ellipsoid(x,.10,.80,.095,.065,.18,rubber);}else if(config.seated){limb([x,.59,-.04],[x,.54,.35],.105,.082,pants);limb([x,.54,.35],[x,.13,.39],.082,.065,pants);ellipsoid(x,.085,.46,.095,.065,.18,rubber);}else{limb([x,.87,0],[x,.48,.01],.105,.082,pants);limb([x,.48,.01],[x,.13,0],.082,.065,pants);ellipsoid(x,.085,.07,.095,.065,.18,rubber);}}
@@ -102,7 +114,8 @@ export function buildFacility(scene){
   const body=mesh(humanTorso(),uniform,0,1.18,0,g);
   if(coat){const skirt=mesh(new THREE.CylinderGeometry(.215,.28,.43,24),uniform,0,.93,0,g);skirt.scale.z=.63;roundedBox(0,1.2,.152,.085,.45,.025,'#244655',g,.015);for(const side of [-1,1]){const lapel=roundedBox(side*.075,1.36,.172,.09,.24,.018,white,g,.009);lapel.rotation.z=side*.25;roundedBox(side*.14,1.03,.177,.12,.13,.012,'#e4e7e3',g,.006);}for(let i=0;i<3;i++)noShadow(sphere(.038,1.22-i*.12,.182,.009,dark,g));}
   cyl(0,1.51,0,.068,.15,skin,g);ellipsoid(0,1.68,0,.133,.18,.115,skin);ellipsoid(-.136,1.67,0,.02,.037,.024,skin);ellipsoid(.136,1.67,0,.02,.037,.024,skin);
-  if(female){ellipsoid(0,1.73,-.042,.156,.19,.126,hair);ellipsoid(0,1.57,-.046,.173,.16,.106,hair);ellipsoid(0,1.675,.077,.11,.145,.062,skin);}else{const h=mesh(new THREE.SphereGeometry(1,32,16,0,Math.PI*2,0,Math.PI*.48),hair,0,1.682,-.004,g);h.scale.set(.142,.188,.125);}
+  // Women wear a hijab framing the face (set back from the face plane); some men have a short beard.
+  if(female){const scarf=clothMat(['#1f2326','#2d3a4a','#e9e4da','#4b3f3a','#20313a','#5b6b73'][peopleCount%6],{repeat:4,sheen:.55});ellipsoid(0,1.70,-.05,.152,.198,.15,scarf);ellipsoid(0,1.47,-.01,.19,.12,.15,scarf);}else{const h=mesh(new THREE.SphereGeometry(1,32,16,0,Math.PI*2,0,Math.PI*.48),hair,0,1.682,-.004,g);h.scale.set(.142,.188,.125);if(peopleCount%2)ellipsoid(0,1.585,.04,.105,.06,.075,hair);}
   for(const side of [-1,1]){ellipsoid(side*.044,1.7,.119,.023,.012,.01,white);ellipsoid(side*.044,1.7,.128,.008,.009,.006,hair);const brow=rod([side*.023,1.728,.12],[side*.063,1.73,.111],.004,hair,g);noShadow(brow);}
   ellipsoid(0,1.66,.129,.016,.028,.014,skin);rod([-.026,1.615,.116],[.026,1.615,.116],.003,mat('#875e4e'),g);
   for(const side of [-1,1]){limb([side*.205,1.39,0],[side*.28,1.13,.022],.089,.072,uniform);limb([side*.28,1.13,.022],[side*.3,.94,.085],.072,.052,uniform);ellipsoid(side*.3,.885,.09,.045,.07,.04,skin);}
@@ -154,7 +167,7 @@ export function buildFacility(scene){
   }
   rod([x,2.85,-7.4],[x,2.85,-2.1],.015,steel);
   const cg=new THREE.PlaneGeometry(4.6,2.2,24,1),pos=cg.attributes.position;for(let j=0;j<pos.count;j++)pos.setZ(j,Math.sin(pos.getX(j)*12)*.065);cg.computeVertexNormals();
-  const curtain=mesh(cg,new THREE.MeshStandardMaterial({color:'#fffdf6',side:THREE.DoubleSide,roughness:.95}),x,1.6,-4.95);curtain.rotation.y=Math.PI/2;curtains.push({id:r.id,node:curtain});
+  const curtain=mesh(cg,curtainMat.clone(),x,1.6,-4.95);curtain.rotation.y=Math.PI/2;curtain.userData.noAO=true;curtains.push({id:r.id,node:curtain});
   clock(x+2.35,2.7,-7.71);supplies(x-2.55,-1.55);
   const objects=world.children.slice(first),roomGroup=new THREE.Group();roomGroup.position.set(x,0,8);roomGroup.rotation.y=Math.PI;world.add(roomGroup);
   objects.forEach(o=>{world.remove(o);o.position.x-=x;o.position.z+=4;roomGroup.add(o)});
@@ -233,8 +246,9 @@ export function buildFacility(scene){
  function tent(t){
   const g=new THREE.Group();g.position.set(t.x,0,t.z);g.rotation.y=t.yaw;world.add(g);
   for(const a of [-2.5,2.5])for(const b of [-2.5,2.5])cyl(a,1.45,b,.035,2.9,white,g);
-  let roof=mesh(new THREE.ConeGeometry(3.8,1.7,4),white,0,3.5,0,g);roof.rotation.y=Math.PI/4;
-  box(0,2.2,-2.48,5,.5,.025,white,g);box(0,1.3,-2.48,5,2.6,.025,'#eeeadd',g);for(const side of [-1,1])box(side*2.48,1.3,0,.025,2.6,5,'#eeeadd',g);
+  const canvas=clothMat('#eeeadd',{size:.22,sheen:.3}),canopy=clothMat('#f5f4ee',{size:.22,sheen:.3});
+  let roof=mesh(new THREE.ConeGeometry(3.8,1.7,4),canopy,0,3.5,0,g);roof.rotation.y=Math.PI/4;
+  box(0,2.2,-2.48,5,.5,.025,canopy,g);box(0,1.3,-2.48,5,2.6,.025,canvas,g);for(const side of [-1,1])box(side*2.48,1.3,0,.025,2.6,5,canvas,g);
   label('GREEN (TRIAGE)\nالفرز الأخضر',0,2.5,2.53,4,.65,'#168b50',undefined,g);
   label('بسطة '+t.id+' · '+(t.patients===2?'حالتان':'حالة واحدة')+' · 4 طلاب طب',0,2.02,2.53,4,.34,'#edf4e9','#315746',g);
   box(0,.7,0,2,.075,1,white,g);for(const a of [-.8,.8])for(const b of [-.35,.35])box(a,.35,b,.04,.7,.04,steel,g);
@@ -306,7 +320,7 @@ export function buildFacility(scene){
  ribbon(inside,edge,.026,asphalt);ribbon(edge,edge+.45,.085,white,true);ribbon(inside-.45,inside,.085,white);
  const outline=stadiumOutline(inside-.45),landPositions=[];
  for(let i=1;i<outline.length;i++)for(const p of [{x:22,z:86},outline[i],outline[i-1]])landPositions.push(p.x,-.018,p.z);
- const landGeometry=new THREE.BufferGeometry();landGeometry.setAttribute('position',new THREE.Float32BufferAttribute(landPositions,3));landGeometry.computeVertexNormals();mesh(landGeometry,mat('#8c9d7e',0,.95),0,0,0).castShadow=false;
+ const landGeometry=new THREE.BufferGeometry();landGeometry.setAttribute('position',new THREE.Float32BufferAttribute(landPositions,3));landGeometry.setAttribute('uv',new THREE.Float32BufferAttribute(landPositions.length/3*2,2));landGeometry.computeVertexNormals();mesh(landGeometry,labSurface('grass','#8c9d7e')||mat('#8c9d7e',0,.95),0,0,0).castShadow=false;
  // The frontage and circuit share one continuous asphalt court; no divider.
  const centerline=stadiumOutline();let travelled=0;
  for(let i=1;i<centerline.length;i++){const a=centerline[i-1],b=centerline[i],length=Math.hypot(b.x-a.x,b.z-a.z);for(let d=0;d<length;d+=1){if((travelled+d)%9>=4)continue;const u=(d+.5)/length,o=box(a.x+(b.x-a.x)*u,.052,a.z+(b.z-a.z)*u,.14,.006,Math.min(1.05,length-d),'#e4dfc3');o.rotation.y=Math.atan2(b.x-a.x,b.z-a.z);noShadow(o);}travelled+=length;}
