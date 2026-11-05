@@ -1,14 +1,17 @@
 import * as THREE from 'three';
 import {HDRLoader} from './vendor/HDRLoader.js';
+import {Q} from './quality.js?v=20261105b';
+// Physical extras (sheen, clearcoat) cost a lot on weak GPUs; below the high tier they fall back to the standard material.
+function phys(params){if(Q.physical)return new THREE.MeshPhysicalMaterial(params);const p={...params};for(const k of Object.keys(p))if(/^(sheen|clearcoat|specularIntensity)/.test(k))delete p[k];return new THREE.MeshStandardMaterial(p);}
 
 const loader=new THREE.TextureLoader(),surfaces=new Map(),assetPromises=[];
-function texture(name,color=false){let resolve;const promise=new Promise(r=>resolve=r);assetPromises.push(promise);const t=loader.load('assets/lab/'+name,()=>resolve(true),undefined,()=>resolve(false));t.wrapS=t.wrapT=THREE.RepeatWrapping;t.anisotropy=8;if(color)t.colorSpace=THREE.SRGBColorSpace;return t;}
+function texture(name,color=false){let resolve;const promise=new Promise(r=>resolve=r);assetPromises.push(promise);const t=loader.load('assets/lab/'+name,()=>resolve(true),undefined,()=>resolve(false));t.wrapS=t.wrapT=THREE.RepeatWrapping;t.anisotropy=Q.anisotropy;if(color)t.colorSpace=THREE.SRGBColorSpace;return t;}
 function paintSurface(kind,color){
  const c=document.createElement('canvas');c.width=c.height=512;const q=c.getContext('2d');q.fillStyle=color;q.fillRect(0,0,512,512);let seed=421;const rand=()=>{seed=(1664525*seed+1013904223)>>>0;return seed/4294967296;};
  for(let i=0;i<16000;i++){const v=rand()>.5?255:0;q.fillStyle=`rgba(${v},${v},${v},${kind==='sand'?.08:.025})`;q.fillRect(rand()*512,rand()*512,1,1);}
  const height=document.createElement('canvas');height.width=height.height=512;const h=height.getContext('2d');h.fillStyle='#eee';h.fillRect(0,0,512,512);
  if(kind==='tile'||kind==='paving'){const step=kind==='tile'?128:64;q.strokeStyle=kind==='tile'?'#b8bbb7':'#a99f8e';q.lineWidth=kind==='tile'?1.4:2;h.strokeStyle='#333';h.lineWidth=3;for(let y=0;y<=512;y+=step){q.beginPath();q.moveTo(0,y);q.lineTo(512,y);q.stroke();h.beginPath();h.moveTo(0,y);h.lineTo(512,y);h.stroke();for(let x=(kind==='paving'&&y/step%2?step:0);x<=512;x+=kind==='paving'?step*2:step){q.beginPath();q.moveTo(x,y);q.lineTo(x,y+step);q.stroke();h.beginPath();h.moveTo(x,y);h.lineTo(x,y+step);h.stroke();}}}
- const map=new THREE.CanvasTexture(c);map.colorSpace=THREE.SRGBColorSpace;map.wrapS=map.wrapT=THREE.RepeatWrapping;map.anisotropy=8;const bump=new THREE.CanvasTexture(height);bump.wrapS=bump.wrapT=THREE.RepeatWrapping;
+ const map=new THREE.CanvasTexture(c);map.colorSpace=THREE.SRGBColorSpace;map.wrapS=map.wrapT=THREE.RepeatWrapping;map.anisotropy=Q.anisotropy;const bump=new THREE.CanvasTexture(height);bump.wrapS=bump.wrapT=THREE.RepeatWrapping;
  const m=new THREE.MeshStandardMaterial({map,roughness:kind==='tile'?.38:.94,bumpMap:bump,bumpScale:kind==='tile'?.003:.008});m.userData.labTextureSize=kind==='tile'?2.4:kind==='paving'?2.4:5;return m;
 }
 // Experiment 02: Poly Haven CC0 relief and roughness maps for floors, walls, cloth and planting (see ASSET-CREDITS.md).
@@ -18,28 +21,28 @@ const clothCache=new Map();
 // Woven fabric: weave relief plus sheen. Planar size (metres per tile) for large panels, UV repeat for body parts.
 export function cloth(color,{size=null,repeat=5,sheen=.7}={}){
  const key=color+size+repeat+sheen;if(clothCache.has(key))return clothCache.get(key);
- const tint=new THREE.Color(color),m=new THREE.MeshPhysicalMaterial({color:tint,roughness:.92,normalMap:shared('terry_cloth_nor_gl.jpg',false,size?1:repeat),normalScale:new THREE.Vector2(.45,.45),roughnessMap:shared('terry_cloth_rough.jpg',false,size?1:repeat),sheen,sheenRoughness:.75,sheenColor:tint.clone().lerp(new THREE.Color('#ffffff'),.45)});
+ const tint=new THREE.Color(color),m=phys({color:tint,roughness:.92,...(Q.clothNormals?{normalMap:shared('terry_cloth_nor_gl.jpg',false,size?1:repeat),normalScale:new THREE.Vector2(.45,.45),roughnessMap:shared('terry_cloth_rough.jpg',false,size?1:repeat)}:{}),sheen,sheenRoughness:.75,sheenColor:tint.clone().lerp(new THREE.Color('#ffffff'),.45)});
  m.name='Lab / cloth '+color;if(size)m.userData.labTextureSize=size;clothCache.set(key,m);return m;
 }
 const skinCache=new Map();
 // Skin: soft specular and a warm sheen standing in for subsurface scattering.
-export function skin(color){if(!skinCache.has(color)){const c=new THREE.Color(color);skinCache.set(color,new THREE.MeshPhysicalMaterial({color:c,roughness:.58,sheen:.35,sheenRoughness:.5,sheenColor:new THREE.Color('#ff8f70'),specularIntensity:.45,name:'Lab / skin'}));}return skinCache.get(color);}
+export function skin(color){if(!skinCache.has(color)){const c=new THREE.Color(color);skinCache.set(color,phys({color:c,roughness:.58,sheen:.35,sheenRoughness:.5,sheenColor:new THREE.Color('#ff8f70'),specularIntensity:.45,name:'Lab / skin'}));}return skinCache.get(color);}
 const hairCache=new Map();
-export function hair(color){if(!hairCache.has(color))hairCache.set(color,new THREE.MeshPhysicalMaterial({color,roughness:.48,sheen:.6,sheenRoughness:.35,sheenColor:new THREE.Color('#8a7a68'),name:'Lab / hair'}));return hairCache.get(color);}
+export function hair(color){if(!hairCache.has(color))hairCache.set(color,phys({color,roughness:.48,sheen:.6,sheenRoughness:.35,sheenColor:new THREE.Color('#8a7a68'),name:'Lab / hair'}));return hairCache.get(color);}
 const paintCache=new Map();
 // Vehicle body paint: clear lacquer over a satin base, reflecting the HDR sky.
-export function carPaint(color){if(!paintCache.has(color))paintCache.set(color,new THREE.MeshPhysicalMaterial({color,roughness:.38,metalness:.05,clearcoat:1,clearcoatRoughness:.07,name:'Lab / paint'}));return paintCache.get(color);}
+export function carPaint(color){if(!paintCache.has(color))paintCache.set(color,phys({color,roughness:.38,metalness:.05,clearcoat:1,clearcoatRoughness:.07,name:'Lab / paint'}));return paintCache.get(color);}
 // Hospital plastic and laminate: low gloss with a thin coat.
-export function plastic(color,gloss=.35){const key='p'+color+gloss;if(!paintCache.has(key))paintCache.set(key,new THREE.MeshPhysicalMaterial({color,roughness:.42,clearcoat:gloss,clearcoatRoughness:.3,name:'Lab / plastic'}));return paintCache.get(key);}
+export function plastic(color,gloss=.35){const key='p'+color+gloss;if(!paintCache.has(key))paintCache.set(key,phys({color,roughness:.42,clearcoat:gloss,clearcoatRoughness:.3,name:'Lab / plastic'}));return paintCache.get(key);}
 export function labSurface(kind,color){
  const key=kind+color;if(surfaces.has(key))return surfaces.get(key);let m=null;
  if(kind==='asphalt'&&color==='#48535b'){m=new THREE.MeshStandardMaterial({map:texture('asphalt_02_diff.jpg',true),normalMap:texture('asphalt_02_nor_gl.jpg'),roughnessMap:texture('asphalt_02_rough.jpg'),normalScale:new THREE.Vector2(.5,.5),color:'#a7aeb0',roughness:1});m.userData.labTextureSize=7;}
  if(kind==='plaster'){m=new THREE.MeshStandardMaterial({map:texture('painted_plaster_wall_diff.jpg',true),normalMap:texture('painted_plaster_wall_nor_gl.jpg'),roughnessMap:texture('painted_plaster_wall_rough.jpg'),normalScale:new THREE.Vector2(.35,.35),color:new THREE.Color().setRGB(1.5,1.49,1.42),roughness:.95});m.userData.labTextureSize=2.2;}
- if(kind==='lobby'){m=new THREE.MeshPhysicalMaterial({map:texture('interior_tiles_diff.jpg',true),normalMap:texture('interior_tiles_nor_gl.jpg'),roughnessMap:texture('interior_tiles_rough.jpg'),color:'#f3efe6',roughness:.7,clearcoat:.35,clearcoatRoughness:.22});m.userData.labTextureSize=3.4;}
+ if(kind==='lobby'){m=phys({map:texture('interior_tiles_diff.jpg',true),normalMap:texture('interior_tiles_nor_gl.jpg'),roughnessMap:texture('interior_tiles_rough.jpg'),color:'#f3efe6',roughness:.7,clearcoat:.35,clearcoatRoughness:.22});m.userData.labTextureSize=3.4;}
  if(kind==='grass'){m=new THREE.MeshStandardMaterial({map:texture('leafy_grass_diff.jpg',true),normalMap:texture('leafy_grass_nor_gl.jpg'),roughnessMap:texture('leafy_grass_rough.jpg'),normalScale:new THREE.Vector2(.8,.8),color:'#c9d6b0',roughness:1});m.userData.labTextureSize=4;}
  if(kind==='fabric')m=cloth(color,{size:.35});
  if(kind==='concrete')m=new THREE.MeshStandardMaterial({map:texture('concrete_wall_001_diff.jpg',true),normalMap:texture('concrete_wall_001_nor_gl.jpg'),roughnessMap:texture('concrete_wall_001_rough.jpg'),normalScale:new THREE.Vector2(.16,.16),roughness:.9,color:new THREE.Color().setRGB(1.25,1.10,.90)});
- if(kind==='wood')m=new THREE.MeshPhysicalMaterial({map:texture('wood_table_001_diff.jpg',true),normalMap:texture('wood_table_001_nor_gl.jpg'),roughnessMap:texture('wood_table_001_rough.jpg'),normalScale:new THREE.Vector2(.2,.2),roughness:.6,color:'#a78c75',clearcoat:.18,clearcoatRoughness:.45});
+ if(kind==='wood')m=phys({map:texture('wood_table_001_diff.jpg',true),normalMap:texture('wood_table_001_nor_gl.jpg'),roughnessMap:texture('wood_table_001_rough.jpg'),normalScale:new THREE.Vector2(.2,.2),roughness:.6,color:'#a78c75',clearcoat:.18,clearcoatRoughness:.45});
  if(kind==='tile'){m=paintSurface(color==='#bcaf98'?'paving':'tile',color==='#bcaf98'?'#c6bba6':'#e1e3e0');if(color!=='#bcaf98'){m.normalMap=texture('terrazzo_tiles_nor_gl.jpg');m.normalScale=new THREE.Vector2(.25,.25);m.roughnessMap=texture('terrazzo_tiles_rough.jpg');m.roughness=.55;}}
  if(kind==='asphalt'&&color!=='#48535b')m=paintSurface('sand','#b9b19b');
  if(m){m.name='Lab / '+key;m.userData.labTextureSize??=kind==='wood'?1.6:kind==='concrete'?3.2:3;surfaces.set(key,m);}return m;
@@ -50,8 +53,8 @@ let leafMap;
 export function foliage(parent,random,clusters){
  if(!leafMap){const c=document.createElement('canvas');c.width=64;c.height=128;const q=c.getContext('2d');q.fillStyle='#fff';q.beginPath();q.moveTo(32,2);q.bezierCurveTo(63,38,59,93,32,126);q.bezierCurveTo(5,93,1,38,32,2);q.fill();leafMap=new THREE.CanvasTexture(c);}
  const mat=new THREE.MeshStandardMaterial({color:'#ffffff',map:leafMap,alphaTest:.45,side:THREE.DoubleSide,roughness:.9});
- const count=clusters.length*180,leaves=new THREE.InstancedMesh(new THREE.PlaneGeometry(.13,.28),mat,count),temp=new THREE.Object3D(),color=new THREE.Color();let index=0;
- for(const c of clusters)for(let i=0;i<180;i++){const u=random()*2-1,a=random()*Math.PI*2,r=Math.cbrt(random())*.97,s=Math.sqrt(1-u*u);temp.position.set(c.x+Math.cos(a)*s*r,c.y+u*r*.75,c.z+Math.sin(a)*s*r);temp.rotation.set(random()*Math.PI,random()*Math.PI*2,random()*Math.PI);temp.scale.setScalar(.65+random()*.75);temp.updateMatrix();leaves.setMatrixAt(index,temp.matrix);color.setHSL(.21+random()*.06,.19+random()*.18,.2+random()*.18);leaves.setColorAt(index++,color);}
+ const perCluster=Q.leaves,count=clusters.length*perCluster,leaves=new THREE.InstancedMesh(new THREE.PlaneGeometry(.13,.28),mat,count),temp=new THREE.Object3D(),color=new THREE.Color();let index=0;
+ for(const c of clusters)for(let i=0;i<perCluster;i++){const u=random()*2-1,a=random()*Math.PI*2,r=Math.cbrt(random())*.97,s=Math.sqrt(1-u*u);temp.position.set(c.x+Math.cos(a)*s*r,c.y+u*r*.75,c.z+Math.sin(a)*s*r);temp.rotation.set(random()*Math.PI,random()*Math.PI*2,random()*Math.PI);temp.scale.setScalar(.65+random()*.75);temp.updateMatrix();leaves.setMatrixAt(index,temp.matrix);color.setHSL(.21+random()*.06,.19+random()*.18,.2+random()*.18);leaves.setColorAt(index++,color);}
  leaves.castShadow=true;leaves.receiveShadow=true;leaves.instanceMatrix.needsUpdate=true;parent.add(leaves);return leaves;
 }
 
@@ -69,7 +72,7 @@ export async function startVisualLab({scene,renderer,sun,fill,facility,skyTex}){
  // At eye level the flat backdrop reads as a wall; show the 1k HDR sky (naturally soft) while walking in daylight.
  function walkSky(){const sky=skyTexture&&document.body.classList.contains('walking')&&document.documentElement.dataset.theme!=='dark';if(sky&&scene.background!==skyTexture){flatBackground=scene.background;scene.background=skyTexture;scene.backgroundIntensity=1.1;}else if(!sky&&scene.background===skyTexture)scene.background=flatBackground;}
  new MutationObserver(walkSky).observe(document.body,{attributes:true,attributeFilter:['class']});new MutationObserver(walkSky).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
- const hdrPromise=new Promise(resolve=>new HDRLoader().load('assets/lab/quadrangle_sunny_1k.hdr',hdr=>{hdr.mapping=THREE.EquirectangularReflectionMapping;environment=pmrem.fromEquirectangular(hdr).texture;scene.environment=environment;skyTexture=hdr;pmrem.dispose();renderer.shadowMap.needsUpdate=true;walkSky();resolve(true)},undefined,()=>resolve(false)));
+ const hdrPromise=!Q.hdr?Promise.resolve(true):new Promise(resolve=>new HDRLoader().load('assets/lab/quadrangle_sunny_1k.hdr',hdr=>{hdr.mapping=THREE.EquirectangularReflectionMapping;environment=pmrem.fromEquirectangular(hdr).texture;scene.environment=environment;skyTexture=hdr;pmrem.dispose();renderer.shadowMap.needsUpdate=true;walkSky();resolve(true)},undefined,()=>resolve(false)));
  const launcher=document.createElement('div');launcher.id='lab-toolbar';launcher.innerHTML='<span class="lab-dot"></span><b>مختبر الواقعية <small>01</small></b><button id="lab-open">الضبط البصري</button><button id="lab-compare">قارن بالأصل ↗</button>';document.body.append(launcher);
  const dialog=document.createElement('dialog');dialog.id='visual-lab-settings';dialog.innerHTML='<div class="dialog-head"><div><small>LOCAL VISUAL LAB · EXPERIMENT 01</small><h2>تجربة الواقعية</h2></div><button class="close" aria-label="إغلاق">×</button></div><div class="lab-settings"><p class="lab-summary">نفس المخطط والمحاكاة، بخامات مصوّرة وإضاءة بيئية وتفاصيل أدق. هذه نسخة تجارب مستقلة.</p><div class="lab-status"><i></i><span id="lab-assets">تجهيز الخامات والإضاءة…</span></div><label>الإضاءة<select id="lab-light"><option value="day">نهار طبيعي</option><option value="warm">شمس دافئة</option><option value="clinical">إضاءة محايدة</option></select></label><label>سطوع المشهد<input id="lab-exposure" type="range" min="0.7" max="1.5" step="0.05" value="1.05"><output id="lab-exposure-value">1.05</output></label><label>ظلال التلامس (Ambient Occlusion)<input id="lab-ao" type="checkbox"></label><h3>لقطات للمراجعة</h3><div id="lab-views"><button data-lab-view="entry">مدخل المستشفى</button><button data-lab-view="reception">الاستقبال</button><button data-lab-view="room">الغرف والأسرّة</button><button data-lab-view="green">الخيام والأشجار</button><button data-lab-view="ambulance">المركبات</button></div><button id="lab-baseline" class="primary">افتح النسخة الأساسية للمقارنة ↗</button><p class="lab-footnote">المقارنة تفتح نسخة محفوظة عند زاوية الكاميرا نفسها. الموقع المنشور لم يتغير.</p><p class="lab-footnote">هذه أول تجربة للخامات والنماذج الإجرائية؛ الشخصيات ما زالت تحتاج نماذج بشرية ممسوحة أو مصممة بدقة أعلى للوصول لواقعية أكبر.</p></div>';document.body.append(dialog);
  const aoBox=document.getElementById('lab-ao');aoBox.onchange=e=>window.facilityDebug.setAO(e.target.checked);

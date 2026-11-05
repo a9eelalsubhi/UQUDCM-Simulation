@@ -50,3 +50,6 @@ html[data-theme='dark'] .drill-live li.bump{animation-name:bump-dark}@keyframes 
  #lab-toolbar b{display:none}
 }
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+/* Quality tiers, 5 November 2026: the quality menu must be reachable on phones, where it matters most */
+.menu-content .quality-label{display:flex!important;gap:10px}.menu-content .quality-label select{max-width:60%}
+@media(max-width:800px){#experience-bar .menu-content{position:fixed;top:calc(var(--bar-end,130px) + 8px);left:8px;right:8px;width:auto;max-height:calc(100vh - var(--bar-end,130px) - 24px)}.menu-content .quality-label select{flex:1;max-width:none;min-height:38px}}

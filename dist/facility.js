@@ -1,6 +1,8 @@
 import * as THREE from 'three';
-import {labSurface,surfaceUV,foliage,humanTorso,cloth as clothMat,skin as skinMat,hair as hairMat,plastic} from './lab-visuals.js?v=20261029e';
+import {Q} from './quality.js?v=20261105b';
+import {labSurface,surfaceUV,foliage,humanTorso,cloth as clothMat,skin as skinMat,hair as hairMat,plastic} from './lab-visuals.js?v=20261105b';
 import {ambulanceLoop,stadiumOutline,lapPoints,pathLength} from './traffic.js';
+import {mergeGeometries} from './vendor/BufferGeometryUtils.js';
 export const roomData=[
  {id:'A1/A2',zone:'A',x:-39.75,color:'#df292d'},{id:'A3/A4',zone:'A',x:-33.25,color:'#df292d'},
  {id:'B1/B2',zone:'B',x:-26.75,color:'#168d54'},{id:'B3/B4',zone:'B',x:-20.25,color:'#168d54'},
@@ -55,8 +57,8 @@ export function buildFacility(scene){
  // Crowd figures are ~1.7 m tall and seen from afar; lighter tessellation keeps the silhouette at a fraction of the triangles.
  function crowdDetail(g){
   const p=g.parameters;
-  if(g.type==='SphereGeometry'&&p.widthSegments>14){g.dispose();return new THREE.SphereGeometry(p.radius,14,10,p.phiStart,p.phiLength,p.thetaStart,p.thetaLength);}
-  if(g.type==='CylinderGeometry'&&p.radialSegments>10){g.dispose();return new THREE.CylinderGeometry(p.radiusTop,p.radiusBottom,p.height,10,p.heightSegments,p.openEnded);}
+  if(g.type==='SphereGeometry'&&p.widthSegments>Q.sphere[0]){g.dispose();return new THREE.SphereGeometry(p.radius,Q.sphere[0],Q.sphere[1],p.phiStart,p.phiLength,p.thetaStart,p.thetaLength);}
+  if(g.type==='CylinderGeometry'&&p.radialSegments>Q.cylinder){g.dispose();return new THREE.CylinderGeometry(p.radiusTop,p.radiusBottom,p.height,Q.cylinder,p.heightSegments,p.openEnded);}
   return g;
  }
  function mesh(g,m,x,y,z,parent=world){
@@ -112,14 +114,15 @@ export function buildFacility(scene){
 
   ellipsoid(0,.84,0,.23,.17,.14,pants);
   const body=mesh(humanTorso(),uniform,0,1.18,0,g);
-  if(coat){const skirt=mesh(new THREE.CylinderGeometry(.215,.28,.43,24),uniform,0,.93,0,g);skirt.scale.z=.63;roundedBox(0,1.2,.152,.085,.45,.025,'#244655',g,.015);for(const side of [-1,1]){const lapel=roundedBox(side*.075,1.36,.172,.09,.24,.018,white,g,.009);lapel.rotation.z=side*.25;roundedBox(side*.14,1.03,.177,.12,.13,.012,'#e4e7e3',g,.006);}for(let i=0;i<3;i++)noShadow(sphere(.038,1.22-i*.12,.182,.009,dark,g));}
+  if(coat){const skirt=mesh(new THREE.CylinderGeometry(.215,.28,.43,24),uniform,0,.93,0,g);skirt.scale.z=.63;roundedBox(0,1.2,.152,.085,.45,.025,'#244655',g,.015);for(const side of [-1,1]){const lapel=roundedBox(side*.075,1.36,.172,.09,.24,.018,white,g,.009);lapel.rotation.z=side*.25;roundedBox(side*.14,1.03,.177,.12,.13,.012,'#e4e7e3',g,.006);}if(!Q.lite)for(let i=0;i<3;i++)noShadow(sphere(.038,1.22-i*.12,.182,.009,dark,g));}
   cyl(0,1.51,0,.068,.15,skin,g);ellipsoid(0,1.68,0,.133,.18,.115,skin);ellipsoid(-.136,1.67,0,.02,.037,.024,skin);ellipsoid(.136,1.67,0,.02,.037,.024,skin);
   // Women wear a hijab framing the face (set back from the face plane); some men have a short beard.
   if(female){const scarf=clothMat(['#1f2326','#2d3a4a','#e9e4da','#4b3f3a','#20313a','#5b6b73'][peopleCount%6],{repeat:4,sheen:.55});ellipsoid(0,1.70,-.05,.152,.198,.15,scarf);ellipsoid(0,1.47,-.01,.19,.12,.15,scarf);}else{const h=mesh(new THREE.SphereGeometry(1,32,16,0,Math.PI*2,0,Math.PI*.48),hair,0,1.682,-.004,g);h.scale.set(.142,.188,.125);if(peopleCount%2)ellipsoid(0,1.585,.04,.105,.06,.075,hair);}
-  for(const side of [-1,1]){ellipsoid(side*.044,1.7,.119,.023,.012,.01,white);ellipsoid(side*.044,1.7,.128,.008,.009,.006,hair);const brow=rod([side*.023,1.728,.12],[side*.063,1.73,.111],.004,hair,g);noShadow(brow);}
+  for(const side of [-1,1]){ellipsoid(side*.044,1.7,.119,.023,.012,.01,white);ellipsoid(side*.044,1.7,.128,.008,.009,.006,hair);if(!Q.lite)noShadow(rod([side*.023,1.728,.12],[side*.063,1.73,.111],.004,hair,g));}
   ellipsoid(0,1.66,.129,.016,.028,.014,skin);rod([-.026,1.615,.116],[.026,1.615,.116],.003,mat('#875e4e'),g);
   for(const side of [-1,1]){limb([side*.205,1.39,0],[side*.28,1.13,.022],.089,.072,uniform);limb([side*.28,1.13,.022],[side*.3,.94,.085],.072,.052,uniform);ellipsoid(side*.3,.885,.09,.045,.07,.04,skin);}
-  for(const side of [-1,1])for(let j=0;j<4;j++){const finger=mesh(new THREE.CapsuleGeometry(.008,.035,3,6),skin,side*.3+(j-1.5)*.014,.817,.092,g);finger.rotation.x=-.12;}
+  // Fingers and similar millimetre details are skipped on the light tier.
+  if(!Q.lite)for(const side of [-1,1])for(let j=0;j<4;j++){const finger=mesh(new THREE.CapsuleGeometry(.008,.035,3,6),skin,side*.3+(j-1.5)*.014,.817,.092,g);finger.rotation.x=-.12;}
   const band=mesh(new THREE.CylinderGeometry(.076,.076,.075,20),mat(arm),.279,1.15,.026,g);band.rotation.z=.16;
   if(config.role!=='patient'&&config.role!=='extra'){const badge=roundedBox(-.105,1.31,.177,.08,.11,.009,'#f3f6f3',g,.004);noShadow(badge);noShadow(box(-.105,1.345,.184,.06,.018,.008,config.role==='student'?'#8467aa':config.role==='paramedic'?'#d0a443':'#32969a',g));
   const steth=mesh(new THREE.TorusGeometry(.085,.007,5,20,Math.PI*1.7),rubber,0,1.33,.181,g);steth.rotation.z=.47;noShadow(steth);sphere(.084,1.23,.19,.023,steel,g);}g.children.filter(o=>o.isMesh&&o.position.y>=1.48).forEach(o=>{o.position.x*=.82;o.position.z*=.82;o.position.y=1.65+(o.position.y-1.65)*.82;o.scale.multiplyScalar(.82);});if(config.seated)g.children.slice(upperStart).forEach(o=>o.position.y-=config.floorSeated?.66:.27);contact(0,0,.8,.8,g);return g;
@@ -342,10 +345,18 @@ export function buildFacility(scene){
  const population={total:populationActors.length,primaryPatients:(roleCounts.patient||0)+(roleCounts.deceased||0),participants:populationActors.length-(roleCounts.patient||0)-(roleCounts.deceased||0),roles:roleCounts,areas:areaCounts,actors:populationActors};
  if(population.total!==172||population.primaryPatients!==30||population.participants!==142)throw new Error('Population does not match the approved distribution');
  const crowd=new THREE.Group();scene.add(crowd);const buckets=new Map();
- actors.filter(a=>a.node.userData.isPerson).forEach(a=>a.node.traverse(o=>{if(!o.isMesh)return;const v=new THREE.Vector3().setFromMatrixPosition(o.matrixWorld),key=o.geometry.uuid+':'+o.material.uuid+':'+o.castShadow+':'+o.receiveShadow+':'+Math.floor(v.x/16)+':'+Math.floor(v.z/16);if(!buckets.has(key))buckets.set(key,[]);buckets.get(key).push({mesh:o,actorId:a.id});}));
+ actors.filter(a=>a.node.userData.isPerson).forEach(a=>a.node.traverse(o=>{if(!o.isMesh)return;const v=new THREE.Vector3().setFromMatrixPosition(o.matrixWorld),key=o.geometry.uuid+':'+o.material.uuid+':'+o.castShadow+':'+o.receiveShadow+':'+Math.floor(v.x/Q.crowdCell)+':'+Math.floor(v.z/Q.crowdCell);if(!buckets.has(key))buckets.set(key,[]);buckets.get(key).push({mesh:o,actorId:a.id});}));
  for(const items of buckets.values()){const first=items[0].mesh,instanced=new THREE.InstancedMesh(first.geometry,first.material,items.length);instanced.castShadow=first.castShadow;instanced.receiveShadow=first.receiveShadow;instanced.userData.actorIds=items.map(i=>i.actorId);items.forEach((item,i)=>instanced.setMatrixAt(i,item.mesh.matrixWorld));instanced.instanceMatrix.needsUpdate=true;instanced.computeBoundingBox();instanced.computeBoundingSphere();crowd.add(instanced);}
  actors.filter(a=>a.node.userData.isPerson).forEach(a=>a.node.parent.remove(a.node));
  stats.outdoorStations=siteLayout.tents.length;stats.people=population.total;
+ // Each inpatient and deceased figure becomes one mesh per material instead of one per body part (about 240 fewer draw calls).
+ for(const node of patientVisuals){
+  node.updateMatrixWorld(true);const inv=node.matrixWorld.clone().invert(),groups=new Map();
+  node.traverse(o=>{if(o.isMesh&&!o.material.transparent){if(!groups.has(o.material))groups.set(o.material,[]);groups.get(o.material).push(o);}});
+  for(const [material,items] of groups){if(items.length<2)continue;
+   const geoms=items.map(o=>{let g=o.geometry.clone();if(g.index)g=g.toNonIndexed();for(const k of Object.keys(g.attributes))if(!['position','normal','uv'].includes(k))g.deleteAttribute(k);if(!g.attributes.uv)g.setAttribute('uv',new THREE.Float32BufferAttribute(new Float32Array(g.attributes.position.count*2),2));return g.applyMatrix4(inv.clone().multiply(o.matrixWorld));}),merged=mergeGeometries(geoms,false);geoms.forEach(g=>g.dispose());if(!merged)continue;
+   const m=new THREE.Mesh(merged,material);m.castShadow=items.some(o=>o.castShadow);m.receiveShadow=true;node.add(m);items.forEach(o=>o.parent.remove(o));}
+ }
  return {world,roofs,smoke,crowd,population,groundHeight,floorHeight,patientVisuals,curtains,bedsByCase,colliders,stats,roomData,triages,siteLayout,fireLight,exit:{x:59,z:2}};
 }
 

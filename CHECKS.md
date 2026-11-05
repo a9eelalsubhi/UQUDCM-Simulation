@@ -40,4 +40,17 @@ Same layout and scenario; end state re-verified (16 admissions, 15 occupied, 16/
 - Ambient occlusion (three.js GTAO) on desktop at high quality; toggle in «الضبط البصري». Off on mobile and on light quality. Labels, smoke and curtains are excluded from occlusion. Measured cost on the test machine: 168 → 161 fps.
 - No console errors on desktop or mobile emulation.
 
+## Device quality tiers, 5 November 2026
+
+Reports that most devices could not run the lab. Measured cause: every device received the top settings (about 2.8 M triangles with ~11k per crowd figure, ~1,260 draw calls, 4K shadow map, sheen and clear-coat shaders, continuous 60 fps rendering).
+
+- dist/quality.js picks a tier before the scene is built: phones, software rendering, ≤4 GB memory or ≤2 cores → low; integrated GPUs → medium; discrete GPUs → high. Viewers can override it in «المزيد ← جودة العرض» (saved per browser, or ?quality=low|medium|high).
+- Low: 0.84 M triangles, 643 draw calls (overview), no antialiasing, 1024 shadow map, standard materials, no HDR download, lighter trees, no finger/brow/button details. Medium: 1.32 M, 837 calls. High: 1.93 M, 1,099 calls, ambient occlusion.
+- Inpatient and deceased figures merged per material (~240 fewer draw calls on every tier); ambulances share one windscreen material.
+- Frame cap: 30 fps (20 on low) when the view is still, full rate while moving or playing.
+- Dynamic resolution: render scale drops to 0.5–0.75 when frames fall below 60% of target and recovers with headroom. Tested with an artificial 45 ms frame: 1.0 → 0.6 in ~5 s, then back up.
+- Zero-size viewports (hidden tabs, embeds) no longer corrupt the camera.
+- Mobile: the «المزيد» menu stays on screen and shows the quality choice.
+- End state verified on all three tiers: 16/15/16 trips/30/12/2/172.
+
 Limits: the human models remain procedural; no photographic human scan or performance benchmark on a physical GPU is claimed. Visual quality remains experimental and is not deployed to the existing site.

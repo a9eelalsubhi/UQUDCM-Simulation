@@ -1,9 +1,10 @@
 import * as THREE from 'three';
-import {startVisualLab} from './lab-visuals.js?v=20261029e';
+import {Q,tier,choice,detectedTier,detectionReason,tierLabel,chooseQuality} from './quality.js?v=20261105b';
+import {startVisualLab} from './lab-visuals.js?v=20261105b';
 import {OrbitControls} from 'three/addons/OrbitControls.js';
 import {mergeGeometries} from './vendor/BufferGeometryUtils.js';
-import {buildFacility,roomData,siteLayout} from './facility.js?v=20261029e';
-import {createDrill} from './drill.js?v=20261029e';
+import {buildFacility,roomData,siteLayout} from './facility.js?v=20261105b';
+import {createDrill} from './drill.js?v=20261105c';
 import {createDashboard} from './dashboard.js';
 import {stadiumOutline} from './traffic.js';
 import {EffectComposer} from './vendor/postprocessing/EffectComposer.js';
@@ -18,29 +19,29 @@ const backdrop=new THREE.Color('#c8d9e4');scene.background=backdrop;scene.fog=ne
 function updateSceneTheme(){const dark=document.documentElement.dataset.theme==='dark';const color=dark?'#1b302e':'#c8d9e4';backdrop.set(color);scene.fog.color.set(color);if(mode==='overview'){scene.fog.near=dark?350:175;scene.fog.far=dark?700:370;}}
 new MutationObserver(updateSceneTheme).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
 const camera=new THREE.PerspectiveCamera(48,1,.2,900);
-let renderer;try{renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});}catch(e){$('loading').innerHTML='<h2>المتصفح لا يدعم عرض 3D</h2><p>افتح الرابط في Chrome أو Safari حديث مع تفعيل WebGL.</p>';throw e}
-const mobileScreen=matchMedia('(max-width:800px)').matches;renderer.setPixelRatio(Math.min(devicePixelRatio,mobileScreen?1.5:2));renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.shadowMap.autoUpdate=false;renderer.shadowMap.needsUpdate=true;renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.0;viewport.appendChild(renderer.domElement);
+let renderer;try{renderer=new THREE.WebGLRenderer({antialias:Q.antialias,powerPreference:'high-performance'});}catch(e){$('loading').innerHTML='<h2>المتصفح لا يدعم عرض 3D</h2><p>افتح الرابط في Chrome أو Safari حديث مع تفعيل WebGL.</p>';throw e}
+const mobileScreen=matchMedia('(max-width:800px)').matches;const pixelCap=Math.min(devicePixelRatio,Q.pixelRatio,mobileScreen?1.5:2);let pixelRatio=pixelCap;renderer.setPixelRatio(pixelRatio);renderer.shadowMap.enabled=true;renderer.shadowMap.type=Q.softShadows?THREE.PCFSoftShadowMap:THREE.PCFShadowMap;renderer.shadowMap.autoUpdate=false;renderer.shadowMap.needsUpdate=true;renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.0;viewport.appendChild(renderer.domElement);
 // Ground-truth ambient occlusion: soft contact shadows where people, beds, furniture and walls meet. Desktop at high quality only.
 const composer=new EffectComposer(renderer,new THREE.WebGLRenderTarget(1,1,{type:THREE.HalfFloatType,samples:4}));composer.addPass(new RenderPass(scene,camera));
 const gtao=new GTAOPass(scene,camera,1,1);gtao.updateGtaoMaterial({radius:.75,distanceExponent:1.4,thickness:1.2,scale:1.15,samples:12,distanceFallOff:1});gtao.updatePdMaterial({lumaPhi:10,depthPhi:2,normalPhi:3,radius:6,rings:2,samples:12});gtao.blendIntensity=.9;
 // Labels, smoke, contact decals and other transparent sprites must not occlude.
 gtao._overrideVisibility=function(){const cache=this._visibilityCache;this.scene.traverse(o=>{if(o.visible&&(o.isSprite||o.isPoints||o.isLine||o.userData.noAO||o.isMesh&&o.material.transparent)){o.visible=false;cache.push(o);}});};
 composer.addPass(gtao);composer.addPass(new OutputPass());
-let aoEnabled=!mobileScreen;
+let aoEnabled=Q.ao&&!mobileScreen;
 function setAO(on){aoEnabled=!!on;}
 scene.add(new THREE.HemisphereLight('#e8f2ff','#aaa088',1.35));
-const sun=new THREE.DirectionalLight('#fff0d9',2.7);sun.position.set(-40,72,38);sun.target.position.set(-15,0,10);scene.add(sun.target);sun.castShadow=true;sun.shadow.mapSize.set(mobileScreen?2048:4096,mobileScreen?2048:4096);sun.shadow.camera.left=-100;sun.shadow.camera.right=100;sun.shadow.camera.top=86;sun.shadow.camera.bottom=-90;sun.shadow.camera.near=1;sun.shadow.camera.far=210;sun.shadow.bias=-.00012;sun.shadow.normalBias=.095;scene.add(sun);
+const sun=new THREE.DirectionalLight('#fff0d9',2.7);sun.position.set(-40,72,38);sun.target.position.set(-15,0,10);scene.add(sun.target);sun.castShadow=true;sun.shadow.mapSize.set(Math.min(Q.shadowMap,mobileScreen?2048:4096),Math.min(Q.shadowMap,mobileScreen?2048:4096));sun.shadow.camera.left=-100;sun.shadow.camera.right=100;sun.shadow.camera.top=86;sun.shadow.camera.bottom=-90;sun.shadow.camera.near=1;sun.shadow.camera.far=210;sun.shadow.bias=-.00012;sun.shadow.normalBias=.095;scene.add(sun);
 const fill=new THREE.DirectionalLight('#eaf3ff',.6);fill.position.set(20,20,-30);scene.add(fill);
 const skyCanvas=document.createElement('canvas');skyCanvas.width=512;skyCanvas.height=256;const skyCtx=skyCanvas.getContext('2d'),skyGrad=skyCtx.createLinearGradient(0,0,0,256);skyGrad.addColorStop(0,'#84accf');skyGrad.addColorStop(.48,'#e5eced');skyGrad.addColorStop(.53,'#d6ccb5');skyGrad.addColorStop(1,'#857c6c');skyCtx.fillStyle=skyGrad;skyCtx.fillRect(0,0,512,256);const skyTex=new THREE.CanvasTexture(skyCanvas);skyTex.colorSpace=THREE.SRGBColorSpace;skyTex.mapping=THREE.EquirectangularReflectionMapping;scene.environment=skyTex;scene.environmentIntensity=.35;
 
 const facility=buildFacility(scene);
 const orbit=new OrbitControls(camera,renderer.domElement);orbit.enableDamping=true;orbit.dampingFactor=.07;orbit.maxPolarAngle=Math.PI/2.07;orbit.minDistance=5;orbit.maxDistance=650;orbit.target.set(0,0,7);
 let overviewFit=true;
-let mode='overview',yaw=0,pitch=0,keys={},lastTime=0,lastMap=0,drag=null,toastTimer,panelsOpen=false;
+let mode='overview',yaw=0,pitch=0,keys={},lastTime=0,lastMap=0,lastInteract=0,drag=null,toastTimer,panelsOpen=false;
 renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();toast('توقف عرض 3D مؤقتاً بسبب ضغط على كرت الشاشة — أعد تحميل الصفحة أو اختر الجودة الخفيفة');});
 let drill=null,drillSnapshot=null,cameraGoal=null,dashboard=null;
 function stopFollow(){overviewFit=false;cameraGoal=null;if(drill?.active)drill.setFollow(false);}
-orbit.addEventListener('start',stopFollow);
+orbit.addEventListener('start',stopFollow);orbit.addEventListener('change',()=>lastInteract=performance.now());
 const places=[
 {id:'loop',name:'الطريق الدائري للإسعاف',x:35,z:58,yaw:-Math.PI/2,color:'#3e7380'},
 {id:'entry',name:'مدخل الكلية',x:0,z:11,color:'#486750'},
@@ -62,7 +63,7 @@ const places=[
 ];
 for(const p of places){const b=document.createElement('button');b.dataset.place=p.id;b.innerHTML='<i class="dot" style="background:'+p.color+'"></i>'+p.name;b.addEventListener('click',()=>go(p));$('destinations').appendChild(b)}
 function optimizeStatic(){
- facility.world.updateMatrixWorld(true);const buckets=new Map();facility.world.traverse(o=>{if(o.isMesh&&!o.isInstancedMesh&&!Array.isArray(o.material)&&!o.material.transparent){let node=o;while(node){if(node.userData.simulationPatient)return;node=node.parent}let ancestor=o;while(ancestor&&!ancestor.userData.actorId)ancestor=ancestor.parent;if(ancestor)o.userData.actorId=ancestor.userData.actorId;const p=new THREE.Vector3().setFromMatrixPosition(o.matrixWorld),key=o.material.uuid+':'+o.castShadow+':'+o.receiveShadow+':'+Math.floor(p.x/24)+':'+Math.floor(p.z/24);let items=buckets.get(key);if(!items){items=[];buckets.set(key,items)}items.push(o)}});
+ facility.world.updateMatrixWorld(true);const buckets=new Map();facility.world.traverse(o=>{if(o.isMesh&&!o.isInstancedMesh&&!Array.isArray(o.material)&&!o.material.transparent){let node=o;while(node){if(node.userData.simulationPatient)return;node=node.parent}let ancestor=o;while(ancestor&&!ancestor.userData.actorId)ancestor=ancestor.parent;if(ancestor)o.userData.actorId=ancestor.userData.actorId;const p=new THREE.Vector3().setFromMatrixPosition(o.matrixWorld),key=o.material.uuid+':'+o.castShadow+':'+o.receiveShadow+':'+Math.floor(p.x/Q.staticCell)+':'+Math.floor(p.z/Q.staticCell);let items=buckets.get(key);if(!items){items=[];buckets.set(key,items)}items.push(o)}});
  for(const items of buckets.values()){if(items.length<2)continue;const geoms=items.map(o=>{let g=o.geometry.clone();if(g.index)g=g.toNonIndexed();return g.applyMatrix4(o.matrixWorld)});
   // mergeGeometries needs an identical attribute set; mixed sources (extrusions, hand-built ribbons) differ in uv/normal.
   const withUV=geoms.every(g=>g.attributes.uv);if(!withUV&&['map','bumpMap','normalMap','roughnessMap'].some(k=>items[0].material[k])){geoms.forEach(g=>g.dispose());continue;}for(const g of geoms){for(const name of Object.keys(g.attributes))if(!['position','normal','uv'].includes(name)||name==='uv'&&!withUV)g.deleteAttribute(name);if(!g.attributes.normal)g.computeVertexNormals();g.morphAttributes={};}
@@ -74,7 +75,7 @@ function fitOverview(){
  for(const x of [-73,117])for(const z of [-25,120])for(const y of [0,8]){const v=new THREE.Vector3(x,y,z).sub(target);distance=Math.max(distance,Math.abs(v.dot(right))/tanH+v.dot(back),Math.abs(v.dot(up))/tanV+v.dot(back));}
  distance*=1.08;camera.position.copy(target).addScaledVector(back,distance);orbit.target.copy(target);orbit.update();scene.fog.near=Math.max(document.documentElement.dataset.theme==='dark'?350:175,distance*1.15);scene.fog.far=Math.max(document.documentElement.dataset.theme==='dark'?700:370,distance*2);
 }
-function resize(){const w=viewport.clientWidth,h=viewport.clientHeight;renderer.setSize(w,h);composer.setPixelRatio(renderer.getPixelRatio());composer.setSize(w,h);camera.aspect=w/h;camera.updateProjectionMatrix();if(mode==='overview'&&overviewFit)fitOverview();}
+function resize(){const w=viewport.clientWidth,h=viewport.clientHeight;if(!w||!h)return;renderer.setSize(w,h);composer.setPixelRatio(renderer.getPixelRatio());composer.setSize(w,h);camera.aspect=w/h;camera.updateProjectionMatrix();if(mode==='overview'&&overviewFit)fitOverview();}
 
 addEventListener('resize',resize);new ResizeObserver(resize).observe(viewport);
 function overview(){overviewFit=true;mode='overview';document.body.classList.remove('walking');orbit.enabled=true;camera.near=.3;camera.updateProjectionMatrix();camera.position.set(55,101,132);orbit.target.set(-20,0,17);orbit.update();$('overview-btn').classList.add('active');$('walk-btn').classList.remove('active');$('crosshair').hidden=true;$('mobile-controls').hidden=true;$('mode-help').textContent='اسحب للدوران · مرّر للتقريب';$('location').textContent='عرض المرفق كاملًا';$('roof-toggle').checked=false;facility.roofs.visible=false;renderer.shadowMap.needsUpdate=true;document.querySelectorAll('[data-place]').forEach(b=>b.classList.remove('selected'));resize();}
@@ -166,12 +167,22 @@ $('help').querySelector('.help-content').insertAdjacentHTML('afterbegin','<p><b>
 updateDrill(drill.getSnapshot());
 $('share-btn').onclick=async()=>{const url=location.origin+location.pathname;try{if(navigator.share&&matchMedia('(pointer:coarse)').matches)await navigator.share({title:'UQUDCM — جولة 3D',url});else{await navigator.clipboard.writeText(url);toast('تم نسخ الرابط — شاركيه مع زملائك')}}catch(e){if(e.name!=='AbortError')toast('الرابط: '+url)}};
 function step(dt){let forward=(keys.KeyW||keys.ArrowUp?1:0)-(keys.KeyS||keys.ArrowDown?1:0),side=(keys.KeyD||keys.ArrowRight?1:0)-(keys.KeyA||keys.ArrowLeft?1:0);const length=Math.hypot(forward,side)||1;forward/=length;side/=length;const speed=(keys.ShiftLeft||keys.ShiftRight?5.5:3)*dt;const dx=(-Math.sin(yaw)*forward+Math.cos(yaw)*side)*speed,dz=(-Math.cos(yaw)*forward-Math.sin(yaw)*side)*speed;const n=Math.max(1,Math.ceil(speed/.12));for(let i=0;i<n;i++){if(!isBlocked(camera.position.x+dx/n,camera.position.z))camera.position.x+=dx/n;if(!isBlocked(camera.position.x,camera.position.z+dz/n))camera.position.z+=dz/n;}camera.position.y=1.68+facility.groundHeight(camera.position.x,camera.position.z);camera.rotation.set(pitch,yaw,0);}
-function frame(wallMs){const elapsed=lastTime?Math.min((wallMs-lastTime)/1000,.25):0,dt=Math.min(elapsed,.05);lastTime=wallMs;drill.tick(elapsed);const ms=drill.active?drill.clock*1000:wallMs;if(mode==='walk'&&!panelsOpen&&!document.querySelector('dialog[open]')){step(dt);updateLocation()}else if(mode==='overview'){if(cameraGoal){const u=THREE.MathUtils.clamp((wallMs-cameraGoal.started)/1400,0,1),a=u*u*(3-2*u);camera.position.lerpVectors(cameraGoal.fromEye,cameraGoal.eye,a);orbit.target.lerpVectors(cameraGoal.fromTarget,cameraGoal.target,a);if(u===1)cameraGoal=null;}orbit.update();}
+// Frames are capped: full rate while something moves, a low rate when the view is still. Saves battery and heat on phones and laptops.
+function frame(wallMs){requestAnimationFrame(frame);const busy=drill.playing||!!cameraGoal||mode==='walk'&&(!!drag||Object.values(keys).some(Boolean))||wallMs-lastInteract<1500;if(lastTime&&wallMs-lastTime<1000/(busy?Q.maxFps:Q.idleFps)-2)return;adaptResolution(wallMs,busy);const elapsed=lastTime?Math.min((wallMs-lastTime)/1000,.25):0,dt=Math.min(elapsed,.05);lastTime=wallMs;drill.tick(elapsed);const ms=drill.active?drill.clock*1000:wallMs;if(mode==='walk'&&!panelsOpen&&!document.querySelector('dialog[open]')){step(dt);updateLocation()}else if(mode==='overview'){if(cameraGoal){const u=THREE.MathUtils.clamp((wallMs-cameraGoal.started)/1400,0,1),a=u*u*(3-2*u);camera.position.lerpVectors(cameraGoal.fromEye,cameraGoal.eye,a);orbit.target.lerpVectors(cameraGoal.fromTarget,cameraGoal.target,a);if(u===1)cameraGoal=null;}orbit.update();}
  facility.smoke.children.forEach(o=>{if(o.userData.fire){o.children.forEach((flame,i)=>{flame.scale.set(.9+Math.sin(ms*.01+i)*.11,2+Math.sin(ms*.007+i)*.24,1);flame.material.opacity=.68+Math.sin(ms*.009+i)*.18});return;}const t=((ms*.000052+o.userData.seed)%1);o.position.set(59.4+t*4.5+o.userData.drift*t*.7,1+t*10.5,2+t*1.2+o.userData.drift*t);o.scale.set(1.5+t*7,1.8+t*6.5,1);o.material.opacity=Math.sin(Math.PI*t)*.7;});
- facility.fireLight.intensity=4.2+Math.sin(ms*.017)*.65;if(wallMs-lastMap>66){lastMap=wallMs;minimap();}if(aoEnabled)composer.render(dt);else renderer.render(scene,camera);requestAnimationFrame(frame)
+ facility.fireLight.intensity=4.2+Math.sin(ms*.017)*.65;if(wallMs-lastMap>66){lastMap=wallMs;minimap();}if(aoEnabled)composer.render(dt);else renderer.render(scene,camera);
 }
-$('quality').onchange=e=>{const high=e.target.value==='high';setAO(high&&!mobileScreen);const box=$('lab-ao');if(box)box.checked=aoEnabled;renderer.setPixelRatio(Math.min(devicePixelRatio,high?(mobileScreen?1.5:2):1));sun.shadow.mapSize.set(high?(mobileScreen?2048:4096):1024,high?(mobileScreen?2048:4096):1024);if(sun.shadow.map){sun.shadow.map.dispose();sun.shadow.map=null;}renderer.shadowMap.needsUpdate=true;resize();};
+// Dynamic resolution: while the scene is moving, lower the render scale when frames drop and restore it when there is headroom.
+let rateStart=0,rateFrames=0,slowWindows=0,fastWindows=0,stuckWindows=0,warned=false;
+function adaptResolution(now,busy){if(!busy){rateStart=0;return;}if(!rateStart){rateStart=now;rateFrames=0;return;}rateFrames++;const span=now-rateStart;if(span<1000)return;const fps=rateFrames*1000/span;rateStart=now;rateFrames=0;if(span>2500)return;
+ if(fps<Q.maxFps*.6){slowWindows++;fastWindows=0;}else if(fps>Q.maxFps*.9){fastWindows++;slowWindows=0;}else slowWindows=fastWindows=0;
+ if(slowWindows>=2&&pixelRatio>Q.minPixelRatio){pixelRatio=Math.max(Q.minPixelRatio,pixelRatio*.8);renderer.setPixelRatio(pixelRatio);resize();slowWindows=0;}
+ else if(fastWindows>=3&&pixelRatio<pixelCap){pixelRatio=Math.min(pixelCap,pixelRatio*1.1);renderer.setPixelRatio(pixelRatio);resize();fastWindows=0;}
+ stuckWindows=fps<15&&pixelRatio<=Q.minPixelRatio?stuckWindows+1:0;if(stuckWindows>=3&&tier!=='low'&&!warned){warned=true;toast('الجهاز يواجه صعوبة في العرض — اختر «جودة العرض: منخفضة» من قائمة «المزيد»');}}
+// Quality menu: automatic (shows the detected tier) or a fixed tier; changing it reloads with the new build settings.
+$('quality').innerHTML=[['auto','تلقائي · '+tierLabel(detectedTier)],['high',tierLabel('high')],['medium',tierLabel('medium')],['low',tierLabel('low')]].map(([v,t])=>'<option value="'+v+'">'+t+'</option>').join('');$('quality').value=choice;$('quality').title='الاكتشاف التلقائي: '+detectionReason;
+$('quality').onchange=e=>chooseQuality(e.target.value);
 overview();requestAnimationFrame(frame);
-window.facilityDebug={stats:facility.stats,population:facility.population,crowd:facility.crowd,world:facility.world,triages:facility.triages,exit:facility.exit,roomData,siteLayout,scene,orbit,camera,colliders:facility.colliders,isBlocked,go,overview,get mode(){return mode},renderer,drill,drillView,dashboard,groundHeight:facility.groundHeight,switchSimulation,focusEvent,patientVisuals:facility.patientVisuals,setAO,get ao(){return aoEnabled},gtao};
+window.facilityDebug={stats:facility.stats,population:facility.population,crowd:facility.crowd,world:facility.world,triages:facility.triages,exit:facility.exit,roomData,siteLayout,scene,orbit,camera,colliders:facility.colliders,isBlocked,go,overview,get mode(){return mode},renderer,drill,drillView,dashboard,groundHeight:facility.groundHeight,switchSimulation,focusEvent,patientVisuals:facility.patientVisuals,setAO,get ao(){return aoEnabled},gtao,quality:{tier,choice,detectedTier,detectionReason,get pixelRatio(){return pixelRatio}}};
 startVisualLab({scene,renderer,sun,fill,facility,skyTex}).finally(()=>setTimeout(()=>{$('loading').style.opacity=0;setTimeout(()=>$('loading').remove(),600)},200));
 

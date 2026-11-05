@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import {RoundedBoxGeometry} from './vendor/RoundedBoxGeometry.js';
-import {humanTorso,cloth as clothMat,skin as skinMat,hair as hairMat,carPaint} from './lab-visuals.js?v=20261029e';
+import {Q} from './quality.js?v=20261105b';
+import {humanTorso,cloth as clothMat,skin as skinMat,hair as hairMat,carPaint} from './lab-visuals.js?v=20261105b';
 import {ambulanceJourney,ambulanceReturn,ambulanceDispatch,ambulanceStaging,smoothRoad} from './traffic.js';
 
 const COLORS={green:'#338965',yellow:'#d5ae38',red:'#b64340',black:'#303c40',doctor:'#ecf1ed',guide:'#e8903a'};
@@ -29,7 +30,7 @@ export function createDrill({scene,facility,renderer,onChange=()=>{},onFocus=()=
  };
  function part(parent,type,args,color,x=0,y=0,z=0){
   const key=type+JSON.stringify(args);if(!geometry.has(key)){
-   const g=type==='human'?humanTorso():type==='rounded'?new RoundedBoxGeometry(args[0],args[1],args[2],3,args[3]):type==='box'?new THREE.BoxGeometry(...args):type==='sphere'?new THREE.SphereGeometry(1,16,12):type==='cylinder'?new THREE.CylinderGeometry(...args,14):type==='capsule'?new THREE.CapsuleGeometry(...args,4,12):new THREE.PlaneGeometry(...args);
+   const g=type==='human'?humanTorso():type==='rounded'?new RoundedBoxGeometry(args[0],args[1],args[2],3,args[3]):type==='box'?new THREE.BoxGeometry(...args):type==='sphere'?new THREE.SphereGeometry(1,...Q.drillSphere):type==='cylinder'?new THREE.CylinderGeometry(...args,Q.drillCylinder):type==='capsule'?new THREE.CapsuleGeometry(...args,...Q.capsule):new THREE.PlaneGeometry(...args);
    geometry.set(key,g);
   }
   const o=new THREE.Mesh(geometry.get(key),typeof color==='string'?meshMaterial(color):color);o.position.set(x,y,z);parent.add(o);parts.push(o);return o;
@@ -110,9 +111,11 @@ export function createDrill({scene,facility,renderer,onChange=()=>{},onFocus=()=
  }
  function rescueLitter(person){const root=new THREE.Group();person.root.add(root);root.visible=false;box(root,0,0,0,.82,.05,1.98,'#cf9655');for(const side of [-1,1])box(root,side*.45,.025,0,.035,.04,2.55,'#abbec2');for(const z of [-.5,.45])box(root,0,.045,z,.85,.018,.07,'#436166');return root;}
  function runPose(model,t,moving){model.pose(moving?t*1.75:t,moving);if(moving){model.figure.rotation.x=.14;model.figure.position.y=.035*Math.abs(Math.sin(t*11));}}
+ // One shared windscreen material for all eight ambulances; clear coat only on the high tier.
+ function windowGlass(){if(!materials.has('glass')){const p={color:'#637f89',transparent:true,opacity:.5,roughness:.13,metalness:.05};materials.set('glass',Q.physical?new THREE.MeshPhysicalMaterial({...p,clearcoat:.8,clearcoatRoughness:.12}):new THREE.MeshStandardMaterial(p));}return materials.get('glass');}
  function beacon(color){const key='beacon'+color;if(!materials.has(key))materials.set(key,new THREE.MeshStandardMaterial({color,emissive:color,emissiveIntensity:2.2,roughness:.3}));return materials.get(key);}
  function ambulance(index){
-  const root=new THREE.Group();roots.add(root);root.visible=false;const white=carPaint('#eff1e9'),dark='#294c59',red=carPaint('#ba4541'),glass=new THREE.MeshPhysicalMaterial({color:'#637f89',transparent:true,opacity:.5,roughness:.13,metalness:.05,clearcoat:.8,clearcoatRoughness:.12});
+  const root=new THREE.Group();roots.add(root);root.visible=false;const white=carPaint('#eff1e9'),dark='#294c59',red=carPaint('#ba4541'),glass=windowGlass();
   function vehicleBox(parent,x,y,z,w,h,d,color){return Math.min(w,h,d)>.1?part(parent,'rounded',[w,h,d,Math.min(.08,Math.min(w,h,d)/4)],color,x,y,z):box(parent,x,y,z,w,h,d,color);}
   vehicleBox(root,0,.47,0,2.25,.2,5.9,'#405256');vehicleBox(root,0,1.04,-.6,2.26,.93,4.5,white);vehicleBox(root,0,1.2,2.1,2.23,1.3,1.52,white);
   for(const s of [-1,1]){vehicleBox(root,s*1.11,1.84,-.5,.1,.58,4.4,white);vehicleBox(root,s*1.16,1.78,-.35,.025,.52,2.6,glass);vehicleBox(root,s*1.125,1.9,1.95,.025,.62,1.23,glass);vehicleBox(root,s*1.14,1.01,-.7,.035,.3,4.45,red);vehicleBox(root,s*1.14,1.52,-.5,.04,.12,.6,red);vehicleBox(root,s*1.145,1.52,-.5,.04,.57,.13,red);}
