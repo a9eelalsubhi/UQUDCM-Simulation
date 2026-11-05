@@ -1,8 +1,8 @@
-import * as THREE from 'three';
+import * as THREE from './vendor/three.module.js';
 import {RoundedBoxGeometry} from './vendor/RoundedBoxGeometry.js';
-import {Q} from './quality.js?v=20261105b';
-import {humanTorso,cloth as clothMat,skin as skinMat,hair as hairMat,carPaint} from './lab-visuals.js?v=20261105b';
-import {ambulanceJourney,ambulanceReturn,ambulanceDispatch,ambulanceStaging,smoothRoad} from './traffic.js';
+import {Q} from './quality.js?v=20261105e';
+import {humanTorso,cloth as clothMat,skin as skinMat,hair as hairMat,carPaint} from './lab-visuals.js?v=20261105e';
+import {ambulanceJourney,ambulanceReturn,ambulanceDispatch,ambulanceStaging,smoothRoad} from './traffic.js?v=20261105e';
 
 const COLORS={green:'#338965',yellow:'#d5ae38',red:'#b64340',black:'#303c40',doctor:'#ecf1ed',guide:'#e8903a'};
 const clamp=(v,a=0,b=1)=>Math.max(a,Math.min(b,v));
@@ -38,7 +38,7 @@ export function createDrill({scene,facility,renderer,onChange=()=>{},onFocus=()=
  const box=(p,x,y,z,w,h,d,c)=>part(p,'box',[w,h,d],c,x,y,z);
  const ell=(p,x,y,z,rx,ry,rz,c)=>{const o=part(p,'sphere',[],c,x,y,z);o.scale.set(rx,ry,rz);return o;};
  function tag(host,text,color,width=2.4,offset=2){
-  const c=document.createElement('canvas');c.width=768;c.height=160;const q=c.getContext('2d');q.fillStyle=color;q.beginPath();q.roundRect(3,3,762,154,24);q.fill();q.fillStyle='#fff';q.textAlign='center';q.textBaseline='middle';q.font='bold 55px Arial, Tahoma';q.fillText(text,384,82,720);
+  const s=Q.canvasScale,c=document.createElement('canvas');c.width=768*s;c.height=160*s;const q=c.getContext('2d');q.scale(s,s);q.fillStyle=color;q.beginPath();q.roundRect(3,3,762,154,24);q.fill();q.fillStyle='#fff';q.textAlign='center';q.textBaseline='middle';q.font='bold 55px Arial, Tahoma';q.fillText(text,384,82,720);
   const texture=new THREE.CanvasTexture(c);texture.colorSpace=THREE.SRGBColorSpace;const sprite=new THREE.Sprite(new THREE.SpriteMaterial({map:texture,depthWrite:false}));sprite.scale.set(width,width*160/768,1);pins.add(sprite);labels.push({host,sprite,offset});return sprite;
  }
  function shadow(root,w=.8,d=.7){
@@ -130,7 +130,7 @@ export function createDrill({scene,facility,renderer,onChange=()=>{},onFocus=()=
   for(const s of [-1,1])vehicleBox(root,s*.73,.78,-.85,.42,.12,.55,'#5f8a8d');shadow(root,3,6.6);
   tag(root,'AMBULANCE 0'+(index+1),'#365c63',3.3,2.9);
   for(let j=0;j<5;j++)box(root,0,1.05+j*.06,3.055,1.18,.022,.035,'#2a3234');
-  function decal(text,w,h,x,y,z,yaw,bg=null){const c=document.createElement('canvas');c.width=768;c.height=128;const q=c.getContext('2d');if(bg){q.fillStyle=bg;q.fillRect(0,0,768,128);}q.fillStyle='#873b36';q.textAlign='center';q.textBaseline='middle';q.font='bold 48px Arial,Tahoma';q.fillText(text,384,67,730);const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;const m=new THREE.MeshBasicMaterial({map:t,transparent:true,depthWrite:false});const o=part(root,'plane',[w,h],m,x,y,z);o.rotation.y=yaw;}
+  function decal(text,w,h,x,y,z,yaw,bg=null){const s=Q.canvasScale,c=document.createElement('canvas');c.width=768*s;c.height=128*s;const q=c.getContext('2d');q.scale(s,s);if(bg){q.fillStyle=bg;q.fillRect(0,0,768,128);}q.fillStyle='#873b36';q.textAlign='center';q.textBaseline='middle';q.font='bold 48px Arial,Tahoma';q.fillText(text,384,67,730);const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;const m=new THREE.MeshBasicMaterial({map:t,transparent:true,depthWrite:false});const o=part(root,'plane',[w,h],m,x,y,z);o.rotation.y=yaw;}
   for(const side of [-1,1])decal('UQUDCM  |  الإسعاف',2.3,.32,side*1.185,1.2,-.7,side*Math.PI/2);
   decal('UQU  '+String(index+1).padStart(2,'0'),.62,.15,0,.71,3.085,0,'#f0eee4');
   return {root,wheels,blue};

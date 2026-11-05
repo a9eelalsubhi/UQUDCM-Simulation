@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+import * as THREE from './vendor/three.module.js';
 export function bedBoard(snapshot,rooms){
  const cases=snapshot?.active?snapshot.patients:[];
  const rows=rooms.map(room=>{const beds=room.id.split('/').map(id=>{const p=cases.find(p=>p.destination===id),arrived=p?.state==='bed',referred=p&&['referral-transfer','helipad-transfer','airborne'].includes(p.state),enRoute=p&&['patient-pickup','loading-walk','loading','aboard','unloading','reception','hospital-walk','bed-transfer'].includes(p.state);return {id,patient:p?.id??null,received:!!p?.admitted,state:referred?'referred':arrived?'arrived':enRoute?'en-route':'waiting'};});const count=beds.filter(b=>b.received).length;return {...room,beds,count,complete:count===2};});

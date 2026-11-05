@@ -1,7 +1,7 @@
-import * as THREE from 'three';
-import {Q} from './quality.js?v=20261105b';
-import {labSurface,surfaceUV,foliage,humanTorso,cloth as clothMat,skin as skinMat,hair as hairMat,plastic} from './lab-visuals.js?v=20261105b';
-import {ambulanceLoop,stadiumOutline,lapPoints,pathLength} from './traffic.js';
+import * as THREE from './vendor/three.module.js';
+import {Q} from './quality.js?v=20261105e';
+import {labSurface,surfaceUV,foliage,humanTorso,cloth as clothMat,skin as skinMat,hair as hairMat,plastic} from './lab-visuals.js?v=20261105e';
+import {ambulanceLoop,stadiumOutline,lapPoints,pathLength} from './traffic.js?v=20261105e';
 import {mergeGeometries} from './vendor/BufferGeometryUtils.js';
 export const roomData=[
  {id:'A1/A2',zone:'A',x:-39.75,color:'#df292d'},{id:'A3/A4',zone:'A',x:-33.25,color:'#df292d'},
@@ -75,7 +75,7 @@ export function buildFacility(scene){
  function wall(x,z,w,d,h=3.4,outer=false){box(x,h/2,z,w,h,d,outer?beige:plaster);block(x,z,w,d);box(x,.16,z,w,.22,d+.025,mat('#c5c9bd'));}
  function label(text,x,y,z,w=2.5,h=.6,bg='#26483d',fg='#ffffff',parent=world,rot=0){
   const key=text+bg+fg;let texture=texCache.get(key);
-  if(!texture){const c=document.createElement('canvas');c.width=1024;c.height=256;const ctx=c.getContext('2d');ctx.fillStyle=bg;ctx.fillRect(0,0,1024,256);ctx.fillStyle=fg;ctx.textAlign='center';ctx.textBaseline='middle';const lines=text.split('\n');ctx.font='bold '+(lines.length>1?65:85)+'px Arial, Tahoma';lines.forEach((line,i)=>ctx.fillText(line,512,128+(i-(lines.length-1)/2)*85,960));texture=new THREE.CanvasTexture(c);texture.colorSpace=THREE.SRGBColorSpace;texCache.set(key,texture)}
+  if(!texture){const s=Q.canvasScale,c=document.createElement('canvas');c.width=1024*s;c.height=256*s;const ctx=c.getContext('2d');ctx.scale(s,s);ctx.fillStyle=bg;ctx.fillRect(0,0,1024,256);ctx.fillStyle=fg;ctx.textAlign='center';ctx.textBaseline='middle';const lines=text.split('\n');ctx.font='bold '+(lines.length>1?65:85)+'px Arial, Tahoma';lines.forEach((line,i)=>ctx.fillText(line,512,128+(i-(lines.length-1)/2)*85,960));texture=new THREE.CanvasTexture(c);texture.colorSpace=THREE.SRGBColorSpace;texCache.set(key,texture)}
   const o=mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({map:texture,side:THREE.DoubleSide,polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-1}),x,y,z,parent);o.rotation.y=rot;noShadow(o);return o;
  }
  function floorLabel(text,x,z,w=4,h=1,bg='#e5e5da'){const o=label(text,x,.075,z,w,h,bg,'#ecede7');o.rotation.x=-Math.PI/2;return o}

@@ -1,22 +1,22 @@
-import * as THREE from 'three';
+import * as THREE from './vendor/three.module.js';
 import {HDRLoader} from './vendor/HDRLoader.js';
-import {Q} from './quality.js?v=20261105b';
+import {Q} from './quality.js?v=20261105e';
 // Physical extras (sheen, clearcoat) cost a lot on weak GPUs; below the high tier they fall back to the standard material.
 function phys(params){if(Q.physical)return new THREE.MeshPhysicalMaterial(params);const p={...params};for(const k of Object.keys(p))if(/^(sheen|clearcoat|specularIntensity)/.test(k))delete p[k];return new THREE.MeshStandardMaterial(p);}
 
 const loader=new THREE.TextureLoader(),surfaces=new Map(),assetPromises=[];
-function texture(name,color=false){let resolve;const promise=new Promise(r=>resolve=r);assetPromises.push(promise);const t=loader.load('assets/lab/'+name,()=>resolve(true),undefined,()=>resolve(false));t.wrapS=t.wrapT=THREE.RepeatWrapping;t.anisotropy=Q.anisotropy;if(color)t.colorSpace=THREE.SRGBColorSpace;return t;}
+function texture(name,color=false){if(Q.lite&&/_(nor_gl|rough)\./.test(name))return null;let resolve;const promise=new Promise(r=>resolve=r);assetPromises.push(promise);const t=loader.load('assets/lab/'+name,()=>resolve(true),undefined,()=>resolve(false));t.wrapS=t.wrapT=THREE.RepeatWrapping;t.anisotropy=Q.anisotropy;if(color)t.colorSpace=THREE.SRGBColorSpace;return t;}
 function paintSurface(kind,color){
- const c=document.createElement('canvas');c.width=c.height=512;const q=c.getContext('2d');q.fillStyle=color;q.fillRect(0,0,512,512);let seed=421;const rand=()=>{seed=(1664525*seed+1013904223)>>>0;return seed/4294967296;};
+ const s=Q.canvasScale,c=document.createElement('canvas');c.width=c.height=512*s;const q=c.getContext('2d');q.scale(s,s);q.fillStyle=color;q.fillRect(0,0,512,512);let seed=421;const rand=()=>{seed=(1664525*seed+1013904223)>>>0;return seed/4294967296;};
  for(let i=0;i<16000;i++){const v=rand()>.5?255:0;q.fillStyle=`rgba(${v},${v},${v},${kind==='sand'?.08:.025})`;q.fillRect(rand()*512,rand()*512,1,1);}
- const height=document.createElement('canvas');height.width=height.height=512;const h=height.getContext('2d');h.fillStyle='#eee';h.fillRect(0,0,512,512);
+ const height=document.createElement('canvas');height.width=height.height=512*s;const h=height.getContext('2d');h.scale(s,s);h.fillStyle='#eee';h.fillRect(0,0,512,512);
  if(kind==='tile'||kind==='paving'){const step=kind==='tile'?128:64;q.strokeStyle=kind==='tile'?'#b8bbb7':'#a99f8e';q.lineWidth=kind==='tile'?1.4:2;h.strokeStyle='#333';h.lineWidth=3;for(let y=0;y<=512;y+=step){q.beginPath();q.moveTo(0,y);q.lineTo(512,y);q.stroke();h.beginPath();h.moveTo(0,y);h.lineTo(512,y);h.stroke();for(let x=(kind==='paving'&&y/step%2?step:0);x<=512;x+=kind==='paving'?step*2:step){q.beginPath();q.moveTo(x,y);q.lineTo(x,y+step);q.stroke();h.beginPath();h.moveTo(x,y);h.lineTo(x,y+step);h.stroke();}}}
  const map=new THREE.CanvasTexture(c);map.colorSpace=THREE.SRGBColorSpace;map.wrapS=map.wrapT=THREE.RepeatWrapping;map.anisotropy=Q.anisotropy;const bump=new THREE.CanvasTexture(height);bump.wrapS=bump.wrapT=THREE.RepeatWrapping;
  const m=new THREE.MeshStandardMaterial({map,roughness:kind==='tile'?.38:.94,bumpMap:bump,bumpScale:kind==='tile'?.003:.008});m.userData.labTextureSize=kind==='tile'?2.4:kind==='paving'?2.4:5;return m;
 }
 // Experiment 02: Poly Haven CC0 relief and roughness maps for floors, walls, cloth and planting (see ASSET-CREDITS.md).
 const sharedMaps=new Map();
-function shared(name,color=false,repeat=1){const key=name+repeat;if(!sharedMaps.has(key)){const t=texture(name,color);t.repeat.set(repeat,repeat);sharedMaps.set(key,t);}return sharedMaps.get(key);}
+function shared(name,color=false,repeat=1){const key=name+repeat;if(!sharedMaps.has(key)){const t=texture(name,color);t?.repeat.set(repeat,repeat);sharedMaps.set(key,t);}return sharedMaps.get(key);}
 const clothCache=new Map();
 // Woven fabric: weave relief plus sheen. Planar size (metres per tile) for large panels, UV repeat for body parts.
 export function cloth(color,{size=null,repeat=5,sheen=.7}={}){

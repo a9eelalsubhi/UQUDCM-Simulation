@@ -53,4 +53,17 @@ Reports that most devices could not run the lab. Measured cause: every device re
 - Mobile: the «المزيد» menu stays on screen and shows the quality choice.
 - End state verified on all three tiers: 16/15/16 trips/30/12/2/172.
 
+## Light by default and iPad loading, 5 November 2026
+
+An iPad stayed at 0% on the loading screen; the owner asked for every visitor to start on the light tier.
+
+- Every visitor now starts on low. The quality menu offers low (default), medium and high; a raised choice is remembered per browser. The GPU detection probe (an extra WebGL context at startup) is gone.
+- No importmap dependency: all modules import Three.js by relative path, so Safari before 16.4 can load the lab. The importmap stays for visitors holding cached older files. Verified on a clean cache with the importmap removed.
+- iPad canvas memory: on low, label and decal canvases render at half resolution (a quarter of the memory), and relief/roughness maps are skipped. Texture memory on the default view: 59 MB on low against 200 MB on medium, the tier an iPad received before.
+- dashboard.js and traffic.js imports are versioned so browsers drop stale copies.
+- Load guard: a classic script turns any load error, failed script download or 45 s stall into an on-screen message with the technical detail and a retry button, instead of a frozen 0%. Tested with a missing module and with the importmap removed.
+- End state on low: 16/15/16 trips/30/12/2/172; no console errors.
+
+Not verified on a physical iPad.
+
 Limits: the human models remain procedural; no photographic human scan or performance benchmark on a physical GPU is claimed. Visual quality remains experimental and is not deployed to the existing site.

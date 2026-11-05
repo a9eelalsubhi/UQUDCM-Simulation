@@ -1,12 +1,12 @@
-import * as THREE from 'three';
-import {Q,tier,choice,detectedTier,detectionReason,tierLabel,chooseQuality} from './quality.js?v=20261105b';
-import {startVisualLab} from './lab-visuals.js?v=20261105b';
-import {OrbitControls} from 'three/addons/OrbitControls.js';
+import * as THREE from './vendor/three.module.js';
+import {Q,tier,tierLabel,chooseQuality} from './quality.js?v=20261105e';
+import {startVisualLab} from './lab-visuals.js?v=20261105e';
+import {OrbitControls} from './vendor/OrbitControls.js';
 import {mergeGeometries} from './vendor/BufferGeometryUtils.js';
-import {buildFacility,roomData,siteLayout} from './facility.js?v=20261105b';
-import {createDrill} from './drill.js?v=20261105c';
-import {createDashboard} from './dashboard.js';
-import {stadiumOutline} from './traffic.js';
+import {buildFacility,roomData,siteLayout} from './facility.js?v=20261105f';
+import {createDrill} from './drill.js?v=20261105f';
+import {createDashboard} from './dashboard.js?v=20261105e';
+import {stadiumOutline} from './traffic.js?v=20261105e';
 import {EffectComposer} from './vendor/postprocessing/EffectComposer.js';
 import {RenderPass} from './vendor/postprocessing/RenderPass.js';
 import {GTAOPass} from './vendor/postprocessing/GTAOPass.js';
@@ -179,10 +179,10 @@ function adaptResolution(now,busy){if(!busy){rateStart=0;return;}if(!rateStart){
  if(slowWindows>=2&&pixelRatio>Q.minPixelRatio){pixelRatio=Math.max(Q.minPixelRatio,pixelRatio*.8);renderer.setPixelRatio(pixelRatio);resize();slowWindows=0;}
  else if(fastWindows>=3&&pixelRatio<pixelCap){pixelRatio=Math.min(pixelCap,pixelRatio*1.1);renderer.setPixelRatio(pixelRatio);resize();fastWindows=0;}
  stuckWindows=fps<15&&pixelRatio<=Q.minPixelRatio?stuckWindows+1:0;if(stuckWindows>=3&&tier!=='low'&&!warned){warned=true;toast('الجهاز يواجه صعوبة في العرض — اختر «جودة العرض: منخفضة» من قائمة «المزيد»');}}
-// Quality menu: automatic (shows the detected tier) or a fixed tier; changing it reloads with the new build settings.
-$('quality').innerHTML=[['auto','تلقائي · '+tierLabel(detectedTier)],['high',tierLabel('high')],['medium',tierLabel('medium')],['low',tierLabel('low')]].map(([v,t])=>'<option value="'+v+'">'+t+'</option>').join('');$('quality').value=choice;$('quality').title='الاكتشاف التلقائي: '+detectionReason;
+// Quality menu: light by default for every device; raising it reloads with the heavier build settings.
+$('quality').innerHTML=[['low',tierLabel('low')+' · افتراضي'],['medium',tierLabel('medium')],['high',tierLabel('high')]].map(([v,t])=>'<option value="'+v+'">'+t+'</option>').join('');$('quality').value=tier;$('quality').title='المنخفضة تعمل على كل الأجهزة؛ ارفعها إذا كان جهازك قوياً';
 $('quality').onchange=e=>chooseQuality(e.target.value);
 overview();requestAnimationFrame(frame);
-window.facilityDebug={stats:facility.stats,population:facility.population,crowd:facility.crowd,world:facility.world,triages:facility.triages,exit:facility.exit,roomData,siteLayout,scene,orbit,camera,colliders:facility.colliders,isBlocked,go,overview,get mode(){return mode},renderer,drill,drillView,dashboard,groundHeight:facility.groundHeight,switchSimulation,focusEvent,patientVisuals:facility.patientVisuals,setAO,get ao(){return aoEnabled},gtao,quality:{tier,choice,detectedTier,detectionReason,get pixelRatio(){return pixelRatio}}};
+window.facilityDebug={stats:facility.stats,population:facility.population,crowd:facility.crowd,world:facility.world,triages:facility.triages,exit:facility.exit,roomData,siteLayout,scene,orbit,camera,colliders:facility.colliders,isBlocked,go,overview,get mode(){return mode},renderer,drill,drillView,dashboard,groundHeight:facility.groundHeight,switchSimulation,focusEvent,patientVisuals:facility.patientVisuals,setAO,get ao(){return aoEnabled},gtao,quality:{tier,get pixelRatio(){return pixelRatio}}};
 startVisualLab({scene,renderer,sun,fill,facility,skyTex}).finally(()=>setTimeout(()=>{$('loading').style.opacity=0;setTimeout(()=>$('loading').remove(),600)},200));
 
