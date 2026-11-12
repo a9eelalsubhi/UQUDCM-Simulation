@@ -1,6 +1,6 @@
 import * as THREE from './vendor/three.module.js';
 import {HDRLoader} from './vendor/HDRLoader.js';
-import {Q} from './quality.js?v=20261105e';
+import {Q} from './quality.js?v=20261112a';
 // Physical extras (sheen, clearcoat) cost a lot on weak GPUs; below the high tier they fall back to the standard material.
 function phys(params){if(Q.physical)return new THREE.MeshPhysicalMaterial(params);const p={...params};for(const k of Object.keys(p))if(/^(sheen|clearcoat|specularIntensity)/.test(k))delete p[k];return new THREE.MeshStandardMaterial(p);}
 

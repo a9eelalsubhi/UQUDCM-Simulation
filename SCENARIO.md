@@ -49,3 +49,22 @@ Eight ambulances make two separate field transfers each, one patient on board in
 ## Traffic correction: continuous court and opposite-side queue
 
 The frontage court extends to the upper circuit edge without an intervening strip or kerb. Eight ambulances wait in marked slots on the opposite straight at z=110, facing east. Moving traffic uses z=114. One shared loading bay at (77,33) admits vehicles in order. The hospital stop is a westbound drive-through position at (0,19); arrivals and departures share the same forward heading. After crew return the vehicle continues west, around the left bend and back to its opposite-side waiting slot; its next dispatch completes the right bend back to yellow. The queue lane is separate from the moving lane, and vehicles keep their heading at every stop. The final helicopter referral uses the same forward route from the opposite queue.
+
+
+## Proposal version 2 (supplied 12 November 2026)
+
+Source: «بروبوزل مشروع طب الكوارث والحشود UQUDCM» (النسخة الثانية، التنفيذ 24/1/2027). Changes applied to the simulation:
+
+| Element | Before | Version 2 |
+| --- | --- | --- |
+| Population | 172 (30 + 142) | **203 (30 + 173)**: 126 in the college, 69 at the tents, 8 at the triage site |
+| Triage | 1 red, 15 yellow, 12 green, 2 black | **4 red, 12 yellow**, 12 green, 2 black |
+| Green area | 8 tents (4 × 2 cases, 4 × 1), 4 students each | **12 tents**, one case each, **4 medics** each (48), **9 team leaders** (tents 1–9) |
+| Triage site | 4 assessors outside the count | **2 triage team leaders + 4 triage members** + 2 deceased, counted |
+| Ambulances | 8, two trips each | **2 ambulances circling continuously, 8 trips each** (owner's instruction; the proposal lists 4) |
+| Transport order | R01, then yellow | **R01–R04 first** (B4, C2, B3, C1), then Y01–Y12 |
+| Rooms switch | — | After all 16 cases are in bed, the 5 students of each bed swap with the 5 of the other bed in the same room |
+| Green switch | — | Each pair of side-by-side tents swaps medic teams; when all pairs finish, teams look back, turn round and cross to the facing tent. Cases and team leaders stay |
+| Replacement case | — | None: the proposal ends with R01 referred by air; no replacement case is added |
+
+Assumptions: which nine tents have team leaders, the switch timings, and the litter assignment (R01 and R02 carried, R03 assisted) are not specified in the proposal.

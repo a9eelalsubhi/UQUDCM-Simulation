@@ -1,7 +1,7 @@
 import * as THREE from './vendor/three.module.js';
-import {Q} from './quality.js?v=20261105e';
-import {labSurface,surfaceUV,foliage,humanTorso,cloth as clothMat,skin as skinMat,hair as hairMat,plastic} from './lab-visuals.js?v=20261105e';
-import {ambulanceLoop,stadiumOutline,lapPoints,pathLength} from './traffic.js?v=20261105e';
+import {Q} from './quality.js?v=20261112a';
+import {labSurface,surfaceUV,foliage,humanTorso,cloth as clothMat,skin as skinMat,hair as hairMat,plastic} from './lab-visuals.js?v=20261112a';
+import {ambulanceLoop,stadiumOutline,lapPoints,pathLength} from './traffic.js?v=20261112a';
 import {mergeGeometries} from './vendor/BufferGeometryUtils.js';
 export const roomData=[
  {id:'A1/A2',zone:'A',x:-39.75,color:'#df292d'},{id:'A3/A4',zone:'A',x:-33.25,color:'#df292d'},
@@ -11,9 +11,11 @@ export const roomData=[
 ];
 export const siteLayout={
  fireSite:{x:51,z:2,w:16,d:20,exitX:59,exitZ:2,attached:true},ambulanceLoop,bounds:{x0:-78,x1:122,z0:-29,z1:125},court:{x:22,z:31,w:150,d:66},
- black:{x:69,z:-8.5,w:7.5,d:6},green:{x:27,z:22,w:25,d:17},red:{x:69,z:22,w:7.5,d:11},yellow:{x:79,z:22,w:9,d:12},
+ black:{x:69,z:-8.5,w:7.5,d:6},green:{x:27,z:22,w:28,d:17},red:{x:69,z:22,w:7.5,d:11},yellow:{x:79,z:22,w:9,d:12},
  greenArrival:{x:15,z:22,yaw:-Math.PI/2},roomZ:8,doorZ:4,
- tents:[17.5,23.8,30.2,36.5].flatMap((x,i)=>[{id:i+1,x,z:16.75,yaw:0,patients:2},{id:i+5,x,z:27.25,yaw:Math.PI,patients:1}]),
+ // Proposal v2: twelve 4 m tents in two facing rows of six; tent i faces tent i+6 across the aisle. One case, four medics; team leaders in tents 1–9.
+ tents:[15.5,20.1,24.7,29.3,33.9,38.5].flatMap((x,i)=>[{id:i+1,x,z:16.75,yaw:0,patients:1,leader:i+1<=9},{id:i+7,x,z:27.25,yaw:Math.PI,patients:1,leader:i+7<=9}]),
+ medicSlots:[[-1.5,.4,Math.PI/2],[1.5,.4,-Math.PI/2],[-.95,1.45,Math.PI],[.95,1.45,Math.PI]],leaderSlot:[0,1.75,Math.PI],tentSize:4,
  treesAtEnd:[{x:44,z:14},{x:44,z:22},{x:44,z:31}]
 };
 export function buildFacility(scene){
@@ -248,16 +250,17 @@ export function buildFacility(scene){
  // The aisle uses the underlying asphalt, with no coplanar floor layer.
  function tent(t){
   const g=new THREE.Group();g.position.set(t.x,0,t.z);g.rotation.y=t.yaw;world.add(g);
-  for(const a of [-2.5,2.5])for(const b of [-2.5,2.5])cyl(a,1.45,b,.035,2.9,white,g);
+  const h=siteLayout.tentSize/2;for(const a of [-h,h])for(const b of [-h,h])cyl(a,1.45,b,.035,2.9,white,g);
   const canvas=clothMat('#eeeadd',{size:.22,sheen:.3}),canopy=clothMat('#f5f4ee',{size:.22,sheen:.3});
-  let roof=mesh(new THREE.ConeGeometry(3.8,1.7,4),canopy,0,3.5,0,g);roof.rotation.y=Math.PI/4;
-  box(0,2.2,-2.48,5,.5,.025,canopy,g);box(0,1.3,-2.48,5,2.6,.025,canvas,g);for(const side of [-1,1])box(side*2.48,1.3,0,.025,2.6,5,canvas,g);
-  label('GREEN (TRIAGE)\nالفرز الأخضر',0,2.5,2.53,4,.65,'#168b50',undefined,g);
-  label('بسطة '+t.id+' · '+(t.patients===2?'حالتان':'حالة واحدة')+' · 4 طلاب طب',0,2.02,2.53,4,.34,'#edf4e9','#315746',g);
-  box(0,.7,0,2,.075,1,white,g);for(const a of [-.8,.8])for(const b of [-.35,.35])box(a,.35,b,.04,.7,.04,steel,g);
+  let roof=mesh(new THREE.ConeGeometry(h*1.52,1.5,4),canopy,0,3.4,0,g);roof.rotation.y=Math.PI/4;
+  box(0,2.2,-h+.02,2*h,.5,.025,canopy,g);box(0,1.3,-h+.02,2*h,2.6,.025,canvas,g);for(const side of [-1,1])box(side*(h-.02),1.3,0,.025,2.6,2*h,canvas,g);
+  label('GREEN (TRIAGE)\nالفرز الأخضر',0,2.5,h+.03,3.4,.6,'#168b50',undefined,g);
+  label('بسطة '+t.id+' · حالة · 4 مسعفين'+(t.leader?' · تيم ليدر':''),0,2.05,h+.03,3.4,.32,'#edf4e9','#315746',g);
+  box(0,.7,0,1.6,.075,.9,white,g);for(const a of [-.65,.65])for(const b of [-.3,.3])box(a,.35,b,.04,.7,.04,steel,g);
   function member(u,v,angle,config){const o=person(0,0,false,'#3d996a',angle,config);world.remove(o);o.position.set(u,0,v);g.add(o);return o;}
-  for(let j=0;j<t.patients;j++){const u=t.patients===2?(j===0?-.65:.65):0;member(u,-.85,0,{id:'out-patient-'+t.id+'-'+(j+1),role:'patient',area:'outdoor',station:'F'+t.id,seated:true,floorSeated:true,color:'#739eac'});}
-  [[-1.75,.45,Math.PI/2],[1.75,.45,-Math.PI/2],[-1.1,1.65,Math.PI],[1.1,1.65,Math.PI]].forEach(([u,v,a],j)=>member(u,v,a,{id:'paramedic-'+t.id+'-'+(j+1),role:'paramedic',area:'outdoor',station:'F'+t.id,color:'#24596d'}));
+  member(0,-.75,0,{id:'out-patient-'+t.id+'-1',role:'patient',area:'outdoor',station:'F'+t.id,seated:true,floorSeated:true,color:'#739eac'});
+  siteLayout.medicSlots.forEach(([u,v,a],j)=>member(u,v,a,{id:'paramedic-'+t.id+'-'+(j+1),role:'paramedic',area:'outdoor',station:'F'+t.id,color:'#24596d'}));
+  if(t.leader){const [u,v,a]=siteLayout.leaderSlot;member(u,v,a,{id:'leader-'+t.id,role:'leader',area:'outdoor',station:'F'+t.id,color:'#8a5a1f'});}
  }
  siteLayout.tents.forEach(tent);
  function deceased(x,z,id){
@@ -266,6 +269,9 @@ export function buildFacility(scene){
   rod([0,.445,-.8],[0,.445,.8],.006,mat('#87938b'),g);label('محاكاة وفاة',0,.48,1.15,1.15,.26,'#35403d',undefined,g);block(x,z,1,2.1);colliders.at(-1).staticPatient=true;
  }
  deceased(62.2,-1.8,'deceased-1');deceased(65,-3.6,'deceased-2');
+ // Proposal v2 triage site: 2 triage team leaders and 4 triage members (shown at their stations; the drill walks them out from the college).
+ siteLayout.triageStaff=[0,1,2,3].map(i=>({id:'triage-member-'+(i+1),role:'triage',x:63+i*2.8-.9,z:10.1,yaw:Math.atan2(.9,8.65-10.1)})).concat([{id:'triage-leader-1',role:'triage-leader',x:65.3,z:12.2,yaw:Math.PI},{id:'triage-leader-2',role:'triage-leader',x:69.5,z:12.2,yaw:Math.PI}]);
+ for(const s of siteLayout.triageStaff)person(s.x,s.z,true,s.role==='triage'?'#326c73':'#8a5a1f',s.yaw,{id:s.id,role:s.role,area:'triage',color:s.role==='triage'?'#f1f2ee':'#e9e2d2'});
  // Original fire exit remains connected to triage at the end of the parking aisle.
  for(const z of [1,3])box(43.05,1.55,z,.14,3.1,.1,steel);
  box(43.05,3.13,2,.14,.12,2.1,steel);
@@ -274,8 +280,8 @@ export function buildFacility(scene){
  // Empty parking bays and compact access lane. Vehicles are removed from this version.
  for(let x=-46;x<69;x+=6)noShadow(box(x,-.015,37,2.8,.006,.12,white));
  for(const x of [-49,71])for(let z=18;z<37;z+=6)noShadow(box(x,-.015,z,.12,.006,2.8,white));
- for(let x=15;x<=40;x+=6.25)for(const z of [16.75,27.25])noShadow(box(x,-.015,z,.075,.005,6.5,white));
- for(const z of [13.5,30.5])noShadow(box(27,-.015,z,25,.005,.075,white));
+ for(let x=13.2;x<=40.9;x+=4.6)for(const z of [16.75,27.25])noShadow(box(x,-.015,z,.075,.005,5.6,white));
+ for(const z of [13.95,30.05])noShadow(box(27,-.015,z,27.6,.005,.075,white));
  // Fire annex is physically joined to the clinical wing at x=43.
  const fire=siteLayout.fireSite,annexStart=world.children.length;
  box(51,-.05,2,16,.13,20,lobbyFloor);
@@ -332,18 +338,19 @@ export function buildFacility(scene){
  for(const x of [-25,-3,19,41,63])tree(x,86,.95);
  floorLabel('AMBULANCE LOOP / مسار الإسعاف',22,84,25,2,'#637758');
  arrow(ambulanceLoop.entryX,51,0);arrow(ambulanceLoop.exitX,51,Math.PI);
- for(let i=0;i<8;i++){const x=56-i*12;for(const z of [108.6,111.4])noShadow(box(x,.052,z,8.2,.006,.08,white));for(const a of [-4.1,4.1])noShadow(box(x+a,.052,110,.08,.006,2.8,white));}
- floorLabel('انتظار الإسعافات / AMBULANCE QUEUE',15,105.8,31,1.3,'#637758');
+ for(let i=0;i<2;i++){const x=56-i*12;for(const z of [108.6,111.4])noShadow(box(x,.052,z,8.2,.006,.08,white));for(const a of [-4.1,4.1])noShadow(box(x+a,.052,110,.08,.006,2.8,white));}
+ floorLabel('انتظار الإسعافين / AMBULANCE QUEUE',50,105.8,20,1.3,'#637758');
  world.children.slice(roadStart).forEach(o=>o.userData.ambulanceRoad=true);
  stats.ambulanceLoopLength=Math.round(pathLength(lapPoints()));
 
  roofs.children.forEach(o=>o.position.y+=floorHeight);
  const led=new THREE.MeshStandardMaterial({color:'#fafbf2',emissive:'#fff9ef',emissiveIntensity:.6});for(const r of roomData)box(r.x,3.72+floorHeight,8,1.4,.045,.65,led,roofs);for(const x of [-6,0,6])for(const z of [-3,-9,-15])box(x,3.72+floorHeight,z,1.3,.045,.65,led,roofs);roofs.visible=false;
  world.updateMatrixWorld(true);
- const populationActors=actors.map(a=>{const v=a.node.getWorldPosition(new THREE.Vector3());return {id:a.id,role:a.role,area:a.area,station:a.station??null,x:v.x,z:v.z};});
+ const populationActors=actors.map(a=>{const v=a.node.getWorldPosition(new THREE.Vector3()),q=a.node.getWorldQuaternion(new THREE.Quaternion()),yaw=new THREE.Euler().setFromQuaternion(q,'YXZ').y;return {id:a.id,role:a.role,area:a.area,station:a.station??null,x:v.x,z:v.z,yaw};});
  const roleCounts={},areaCounts={};populationActors.forEach(a=>{roleCounts[a.role]=(roleCounts[a.role]||0)+1;areaCounts[a.area]=(areaCounts[a.area]||0)+1;});
  const population={total:populationActors.length,primaryPatients:(roleCounts.patient||0)+(roleCounts.deceased||0),participants:populationActors.length-(roleCounts.patient||0)-(roleCounts.deceased||0),roles:roleCounts,areas:areaCounts,actors:populationActors};
- if(population.total!==172||population.primaryPatients!==30||population.participants!==142)throw new Error('Population does not match the approved distribution');
+ // Proposal v2: 203 = 30 primary cases + 173 participants (126 college + 69 tents + 8 triage site).
+ if(population.total!==203||population.primaryPatients!==30||population.participants!==173)throw new Error('Population does not match the approved distribution: '+population.total+'/'+population.primaryPatients+'/'+population.participants);
  const crowd=new THREE.Group();scene.add(crowd);const buckets=new Map();
  actors.filter(a=>a.node.userData.isPerson).forEach(a=>a.node.traverse(o=>{if(!o.isMesh)return;const v=new THREE.Vector3().setFromMatrixPosition(o.matrixWorld),key=o.geometry.uuid+':'+o.material.uuid+':'+o.castShadow+':'+o.receiveShadow+':'+Math.floor(v.x/Q.crowdCell)+':'+Math.floor(v.z/Q.crowdCell);if(!buckets.has(key))buckets.set(key,[]);buckets.get(key).push({mesh:o,actorId:a.id});}));
  for(const items of buckets.values()){const first=items[0].mesh,instanced=new THREE.InstancedMesh(first.geometry,first.material,items.length);instanced.castShadow=first.castShadow;instanced.receiveShadow=first.receiveShadow;instanced.userData.actorIds=items.map(i=>i.actorId);items.forEach((item,i)=>instanced.setMatrixAt(i,item.mesh.matrixWorld));instanced.instanceMatrix.needsUpdate=true;instanced.computeBoundingBox();instanced.computeBoundingSphere();crowd.add(instanced);}

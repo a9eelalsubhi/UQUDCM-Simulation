@@ -1,8 +1,8 @@
 import * as THREE from './vendor/three.module.js';
 import {RoundedBoxGeometry} from './vendor/RoundedBoxGeometry.js';
-import {Q} from './quality.js?v=20261105e';
-import {humanTorso,cloth as clothMat,skin as skinMat,hair as hairMat,carPaint} from './lab-visuals.js?v=20261105e';
-import {ambulanceJourney,ambulanceReturn,ambulanceDispatch,ambulanceStaging,smoothRoad} from './traffic.js?v=20261105e';
+import {Q} from './quality.js?v=20261112a';
+import {humanTorso,cloth as clothMat,skin as skinMat,hair as hairMat,carPaint} from './lab-visuals.js?v=20261112a';
+import {ambulanceJourney,ambulanceReturn,ambulanceDispatch,ambulanceStaging,smoothRoad} from './traffic.js?v=20261112a';
 
 const COLORS={green:'#338965',yellow:'#d5ae38',red:'#b64340',black:'#303c40',doctor:'#ecf1ed',guide:'#e8903a'};
 const clamp=(v,a=0,b=1)=>Math.max(a,Math.min(b,v));
@@ -146,8 +146,9 @@ export function createDrill({scene,facility,renderer,onChange=()=>{},onFocus=()=
   model.root.userData.triageDoctor=true;tag(model.root,'فرز '+(i+1),'#326c73',1.9,2.3);
   return {id:i+1,model,bag:firstAidBag(model),x,z,yaw:Math.atan2(.9,8.65-z),exam:point(examX,8.65),walkPath,walkStart,walkSpeed,arrival};
  });
- const staging=Array.from({length:8},(_,i)=>ambulanceStaging(i));
- const vehicles=staging.map((_,i)=>ambulance(i)),medics=Array.from({length:16},(_,i)=>avatar({role:'doctor',index:i}));
+ const triageLeaders=facility.siteLayout.triageStaff.filter(s=>s.role==='triage-leader').map((s,i)=>{const model=avatar({role:'doctor',index:i+12}),lane=i?1:-1,walkPath=makePath([[lane,-2.4],[lane,4.8],[lane,14],[11,14],[11,12.8],[41,12.8],[42.5,16],[61,16],[s.x,14.6],[s.x,s.z]]),walkStart=.2+i*.5,arrival=walkStart+walkPath.length/1.8;tag(model.root,'قائد فرز '+(i+1),'#8a5a1f',2.1,2.3);return {model,walkPath,walkStart,arrival,spot:placed(s,s.yaw)};});
+ const staging=Array.from({length:2},(_,i)=>ambulanceStaging(i));
+ const vehicles=staging.map((_,i)=>ambulance(i)),medics=Array.from({length:4},(_,i)=>avatar({role:'doctor',index:i}));
  const evacuationTeam=Array.from({length:5},(_,i)=>{const model=avatar({role:'guide',index:i+20});tag(model.root,'إخلاء '+(i+1),COLORS.guide,1.7,2.15);return model;});
  const yellowFurniture=new THREE.Group();roots.add(yellowFurniture);
  const yellowStaff=Array.from({length:8},(_,i)=>{const row=Math.floor(i/2),side=i%2===0?-1:1,model=avatar({role:'doctor',kind:'yellow',index:i+2});model.root.userData.yellowStaff=true;return {model,x:side<0?74.85:83.15,z:26.55-row*2.5,yaw:Math.atan2(side<0?1.15:-1.15,-.85)};});
@@ -155,25 +156,25 @@ export function createDrill({scene,facility,renderer,onChange=()=>{},onFocus=()=
  // Waiting casualties rest on the ground; wheeled stretchers are brought from ambulances.
  function emptyStretcher(){const root=new THREE.Group();roots.add(root);box(root,0,.72,0,.92,.13,2.08,'#bcc9cd');box(root,0,.82,0,.91,.16,2.05,'#dce3df');box(root,0,.95,-.72,.6,.1,.35,'#f4f3e8');for(const side of [-1,1]){box(root,side*.48,.94,0,.035,.035,1.7,'#8fa4aa');for(const z of [-.78,.78]){box(root,side*.36,.42,z,.04,.55,.04,'#aebfc3');const wheel=part(root,'cylinder',[.12,.12,.07],'#283b40',side*.36,.15,z);wheel.rotation.z=Math.PI/2;}}return {root};}
  const emptyStretchers=vehicles.map(()=>emptyStretcher());
- const sequence=[['red',0],['yellow',0]];for(let i=0;i<12;i++)sequence.push(['green',i],['yellow',i+1]);sequence.push(['yellow',13],['yellow',14],['black',0],['black',1]);
+ const sequence=[['red',0],['red',1],['red',2],['red',3]];for(let i=0;i<12;i++)sequence.push(['green',i],['yellow',i]);sequence.push(['black',0],['black',1]);
  const tentAssignments=[];for(const t of [...facility.siteLayout.tents].sort((a,b)=>a.id-b.id))for(let j=0;j<t.patients;j++)tentAssignments.push({t,j});
  const available=doctors.map(d=>d.arrival+.4);
  const patients=sequence.map(([kind,index],order)=>{
   const id=(kind==='yellow'?'Y':kind==='green'?'G':kind==='red'?'R':'D')+String(index+1).padStart(2,'0'),lying=false,person=avatar({kind,index}),doctorIndex=order%4,slot=Math.floor(order/4),exam=doctors[doctorIndex].exam;
   if(kind==='black'){const start=1.6+index*2.3,target=index===0?point(62.2,-1.8):point(65,-3.6),exitPath=makePath([[58.4,2],[61.5,2],target]),exitDuration=exitPath.length/1.35,exitDone=start+exitDuration,arrival=exitDone+2.2;tag(person.root,id+' · إصابة بالغة',COLORS.black,2.5,1.8);const deathAnchor=new THREE.Group();person.root.add(deathAnchor);deathAnchor.visible=false;tag(deathAnchor,id+' · وفاة',COLORS.black,1.6,1);return {id,kind,index,order,start,assess:Infinity,classified:arrival,arrival,path:exitPath,exitPath,exitDuration,exitDone,doctorIndex:-1,slot:0,exam:null,target,tent:null,seat:0,lying:false,person,escort:null,label:null,handoff:null,guideHold:null,deathAnchor,travelSpeed:1.35,state:'building',world:point(58.4,2)};}
   // A rapid, unescorted evacuation stream feeds four parallel assessment queues.
-  const start=Math.floor(order/2)*.82+(order%2)*.12,laneZ=order%2?2.65:1.35,laneX=55.9,carried=kind==='red'||kind==='yellow'&&index===0,assisted=kind==='yellow'&&index===1;
+  const start=Math.floor(order/2)*.82+(order%2)*.12,laneZ=order%2?2.65:1.35,laneX=55.9,carried=kind==='red'&&index<2,assisted=kind==='red'&&index===2;
   const exitPath=makePath([[laneX,laneZ],[62.3,laneZ],[exam.x,exam.z]]),exitDuration=exitPath.length/(carried?1.6:assisted?1.4:1.8),exitDone=start+exitDuration;
   const assess=Math.max(exitDone,available[doctorIndex]),classified=assess+4.2;available[doctorIndex]=classified+.85;
   let target,path,tent,seat=0;
   const departure=[[exam.x,exam.z],[exam.x+.95,exam.z],[exam.x+.95,12.5]];
   if(kind==='green'){
    const assignment=tentAssignments[index];tent=assignment.t;seat=assignment.j;const saved=facility.population.actors.find(a=>a.id==='out-patient-'+tent.id+'-'+(seat+1));target=point(saved.x,saved.z);
-   const dir=tent.yaw===0?1:-1,front=tent.z+dir*3.15,side=seat===0?-1:1;
-   path=makePath([...departure,[64.5,13.1],[64.5,18.2],[45.5,18.2],[41,22],[tent.x,22],[tent.x,front],[tent.x+side*1.4,tent.z+dir*.9],[tent.x+side*1.4,tent.z-dir*1.3],[target.x,tent.z-dir*1.3],target]);
+   const dir=tent.yaw===0?1:-1,front=tent.z+dir*2.6,side=seat===0?-1:1;
+   path=makePath([...departure,[64.5,13.1],[64.5,18.2],[45.5,18.2],[41,22],[tent.x,22],[tent.x,front],[tent.x+side*1.05,tent.z+dir*.9],[tent.x+side*1.05,tent.z-dir*1.3],[target.x,tent.z-dir*1.3],target]);
   }else if(kind==='yellow'){
-   target=point(index===14?82:[76,77.2,80.8,82][index%4],25.7-Math.floor(index/4)*2.5);path=makePath([...departure,[73.5,12.5],[84.5,14.5],[84.5,target.z+.9],[target.x,target.z+.9],target]);
-  }else {target=point(69,22);path=makePath([...departure,[73.5,13.5],[73.5,15],[69,15],target]);}
+   target=point([76,77.2,80.8,82][index%4],25.7-Math.floor(index/4)*2.5);path=makePath([...departure,[73.5,12.5],[84.5,14.5],[84.5,target.z+.9],[target.x,target.z+.9],target]);
+  }else {const spot=[[70.7,19.6],[67.3,19.6],[70.7,24.4],[67.3,24.4]][index];target=point(...spot);path=makePath([...departure,[73.5,13.5],[73.5,target.z+1.4],[target.x,target.z+1.4],target]);}
   const travelSpeed=carried?1.3:kind==='green'?1.25:1.35,arrival=classified+path.length/travelSpeed,escort=kind==='green'?avatar({role:'guide',index:index+1}):null;
   const handoff=kind==='green'?classified+path.lengths[3]/travelSpeed:null,guideHold=kind==='green'?point(tent.x+(seat===0?-1.75:1.75),tent.z+(tent.yaw===0?3.2:-3.2)):null;
   let guideRunPath=null,guideRunStart=null,guideRunEnd=null;
@@ -208,16 +209,16 @@ export function createDrill({scene,facility,renderer,onChange=()=>{},onFocus=()=
  const lastTrip=Array(8).fill(null),lastBerth=Array(2).fill(null);
  let previousRoadDeparture=-Infinity;
  const transfersPlaceholder={firstDeparture:0};
- const transportPatients=[critical,...patients.filter(p=>p.kind==='yellow').sort((a,b)=>a.index-b.index)];
+ const transportPatients=[...patients.filter(p=>p.kind==='red').sort((a,b)=>a.index-b.index),...patients.filter(p=>p.kind==='yellow').sort((a,b)=>a.index-b.index)];
  const transfers=transportPatients.map((p,i)=>{
-  const vehicleIndex=i%8,bay=0,vehicle=vehicles[vehicleIndex],park=point(77,33),bedId=bedOrder[i],bed=beds[bedId];
+  const vehicleIndex=i%2,bay=0,vehicle=vehicles[vehicleIndex],park=point(77,33),bedId=bedOrder[i],bed=beds[bedId];
   const firstDeparture=i?transfersPlaceholder.firstDeparture:0;
   const stagingPath=makePath(ambulanceDispatch(staging[vehicleIndex],park)),stagingDuration=stagingPath.length/5;
   const dispatch=Math.max(transportStart+i*12,(lastTrip[vehicleIndex]?.returnDone||0)+5,p.arrival+5-stagingDuration,(i?lastBerth[0].loadDone+8:0)-stagingDuration),prepare=dispatch+stagingDuration;
-  const pickup=p.kind==='red'?point(71.3,p.target.z):point(bay===0?78.4:79.6,p.target.z+.8);
+  const pickup=p.kind==='red'?point(p.target.x+1.6,p.target.z):point(bay===0?78.4:79.6,p.target.z+.8);
   const aisle=p.kind==='red'?73.5:84.5,pickupPath=makePath([[80.25,park.z],[84.5,park.z],[84.5,28.5],[aisle,28.5],[pickup.x,28.5],pickup]),unpackDone=prepare+3,atPatient=unpackDone+pickupPath.length/1.45,pickupDone=atPatient+5,start=pickupDone;
   const loadPath=makePath([pickup,[pickup.x,28.5],[84.5,28.5],[84.5,park.z],[80.25,park.z]]),loadDone=start+loadPath.length/1.35+4;
-  const journey=ambulanceJourney(park,bay),drivePath=makePath(journey.points),driveDone=loadDone+drivePath.length/4.4,tripNumber=Math.floor(i/8)+1;
+  const journey=ambulanceJourney(park,bay),drivePath=makePath(journey.points),driveDone=loadDone+drivePath.length/4.4,tripNumber=Math.floor(i/2)+1;
   const room=facility.roomData.find(r=>r.id.split('/').includes(bedId)),roomX=room.x,foot=point(bed.x,6.3),hospitalPath=makePath([[3.6,19],[5.7,19],[5.7,14.2],[1.4,14.2],[0,11],[0,2.2],[roomX,2.2],[roomX,5.6],[bed.x,5.6],foot]),unloaded=driveDone+4;
   const receptionStart=unloaded+hospitalPath.lengths[5]/1.25,receptionDone=receptionStart+5,atBed=unloaded+hospitalPath.length/1.25+5,done=atBed+6;
   const returnWalkPath=makePath([...hospitalPath.points].reverse().map(p=>Math.abs(p.x)<.01?point(1.6,p.z):p)),returnWalkDone=done+2+returnWalkPath.length/1.7;
@@ -230,34 +231,73 @@ export function createDrill({scene,facility,renderer,onChange=()=>{},onFocus=()=
   previousRoadDeparture=trip.loadDone;lastTrip[vehicleIndex]=lastBerth[bay]=trip;if(i===0)transfersPlaceholder.firstDeparture=trip.loadDone;return trip;
  });
  const allBedsAt=Math.max(...transfers.map(t=>t.done));
+ const actorById=new Map(facility.population.actors.map(a=>[a.id,a])),tentsById=new Map(facility.siteLayout.tents.map(x=>[x.id,x]));
+ const pairTent=id=>id%2?id+1:id-1,facingTent=id=>id<=6?id+6:id-6;
+ function slotWorld(tent,[u,v,a]){const c=Math.cos(tent.yaw),s=Math.sin(tent.yaw);return {x:tent.x+c*u+s*v,z:tent.z-s*u+c*v,yaw:a+tent.yaw};}
+ const turnTo=(a,b,u)=>{const d=((b-a)%(Math.PI*2)+Math.PI*3)%(Math.PI*2)-Math.PI;return a+d*u;};
+ function walkPose(route,u,startYaw,endYaw){const s=sample(route,u);if(u>=1)return {x:s.x,z:s.z,yaw:endYaw,moving:false};let yaw=turnTo(startYaw,s.yaw,clamp(u/.12));if(u>.85)yaw=turnTo(s.yaw,endYaw,clamp((u-.85)/.15));return {x:s.x,z:s.z,yaw,moving:true};}
+ const greenSettled=Math.max(...patients.filter(p=>p.kind==='green').map(p=>p.arrival)),greenA={start:greenSettled+40},greenB={},medicPlans=new Map();
+ for(const tent of facility.siteLayout.tents)facility.siteLayout.medicSlots.forEach((slot,j)=>{
+  const t1=tentsById.get(pairTent(tent.id)),t2=tentsById.get(facingTent(t1.id)),p0=slotWorld(tent,slot),p1=slotWorld(t1,slot),p2=slotWorld(t2,slot),dir=tent.yaw===0?1:-1,dir1=t1.yaw===0?1:-1;
+  const lineA=tent.z+dir*(2.45+(p1.x>p0.x?0:.45)),pathA=makePath([p0,[p0.x,lineA],[p1.x,lineA],p1]),lane=dir1>0?-.35:.35,pathB=makePath([p1,[p1.x+lane,t1.z+dir1*2.45],[p1.x+lane,t2.z-dir1*2.45],p2]);
+  medicPlans.set('paramedic-'+tent.id+'-'+(j+1),{tent,via:t1,final:t2,p0,p1,p2,pathA,pathB,durA:pathA.length/1.3,durB:pathB.length/1.3});
+ });
+ greenA.end=greenA.start+Math.max(...[...medicPlans.values()].map(m=>m.durA));greenB.start=greenA.end+40;greenB.walk=greenB.start+2.5;greenB.end=greenB.walk+Math.max(...[...medicPlans.values()].map(m=>m.durB));
+ function medicPose(m,t){
+  if(t<greenA.start)return {...m.p0,moving:false};
+  if(t<greenA.start+m.durA)return walkPose(m.pathA,(t-greenA.start)/m.durA,m.p0.yaw,m.p1.yaw);
+  if(t<greenB.start)return {...m.p1,moving:false};
+  if(t<greenB.walk){const u=clamp((t-greenB.start)/2);return {x:m.p1.x,z:m.p1.z,yaw:m.p1.yaw+Math.PI*u*u*(3-2*u),moving:false};}
+  if(t<greenB.walk+m.durB)return walkPose(m.pathB,(t-greenB.walk)/m.durB,m.p1.yaw+Math.PI,m.p2.yaw);
+  return {...m.p2,moving:false};
+ }
+ const roomSwitch={start:allBedsAt+12};
  const support=createScenarioSupport(allBedsAt,transfers[0]);
  const duration=Math.ceil(Math.max(support.airborne+18,...transfers.map(tr=>tr.returnDone+4)));
- const events=[{time:0,label:'الإنذار · إخلاء R01 وY01 محمولتين من الداخل',view:'triage'},{time:.6,label:'خروج أطباء الفرز من باب الكلية سيراً مع حقائب الإسعاف',view:'responders'},...doctors.map(d=>({time:d.arrival,label:'وصول طبيب الفرز '+d.id+' بالحقيبة',view:'triage'})),{time:Math.min(...patients.filter(p=>p.escort).map(p=>p.guideRunStart)),label:'منظمو الأخضر ينطلقون من الخيام للقاء الحالات',view:'green'},
+ const events=[{time:0,label:'الإنذار · إخلاء R01 وR02 محمولتين من الداخل',view:'triage'},{time:.2,label:'خروج فريق الفرز (2 تيم ليدر + 4 أعضاء) من باب الكلية',view:'responders'},...doctors.map(d=>({time:d.arrival,label:'وصول طبيب الفرز '+d.id+' بالحقيبة',view:'triage'})),{time:Math.min(...patients.filter(p=>p.escort).map(p=>p.guideRunStart)),label:'منظمو الأخضر ينطلقون من الخيام للقاء الحالات',view:'green'},
  {time:Math.min(...patients.filter(p=>p.kind==='black').map(p=>p.exitDone)),label:'سقوط الحالتين قرب مخرج الحريق',view:'collapse'},
  {time:critical.classified,label:'R01 · تصنيف أحمر وأولوية النقل',view:'triage',patient:'R01'},
- {time:triageComplete,label:'اكتمال الفرز · 1 أحمر، 15 أصفر، 12 أخضر، 2 أسود',view:'triage'},
+ {time:triageComplete,label:'اكتمال الفرز · 4 أحمر، 12 أصفر، 12 أخضر، 2 أسود',view:'triage'},
  ...redRecoveries.flatMap(r=>[{time:r.atBody,label:'رفع '+r.patient.id+' من موقع الحريق',view:'collapse',patient:r.patient.id},{time:r.done,label:'وضع '+r.patient.id+' في منطقة الوفيات السوداء',view:'black',patient:r.patient.id}]),
- {time:Math.max(...patients.filter(p=>p.kind==='green').map(p=>p.arrival)),label:'اكتمال وصول 12 حالة إلى الفرق الراجلة الثمانية',view:'green'},
+ {time:Math.max(...patients.filter(p=>p.kind==='green').map(p=>p.arrival)),label:'اكتمال وصول 12 حالة إلى البسطات الـ12',view:'green'},
  ...transfers.flatMap(tr=>[
   {time:tr.prepare,label:'إخراج النقالة من إسعاف '+(tr.vehicleIndex+1),view:'loading',patient:tr.patient.id,bedId:tr.bedId},
   {time:tr.atPatient,label:'استلام '+tr.patient.id+' من '+(tr.patient.kind==='red'?'الأحمر — أولوية':'الأصفر'),view:tr.patient.kind==='red'?'recovery':'yellow',patient:tr.patient.id,bedId:tr.bedId},
-  {time:tr.loadDone,label:'انطلاق إسعاف '+(tr.vehicleIndex+1)+' بالحالة '+tr.patient.id+' · رحلة '+tr.tripNumber+'/2',view:'drive',patient:tr.patient.id,bedId:tr.bedId},
-  {time:tr.loopStart,label:'لفة العودة '+tr.tripNumber+'/2 للإسعاف '+(tr.vehicleIndex+1)+' بعد تسليم '+tr.patient.id,view:'loop',patient:tr.patient.id,bedId:tr.bedId},
+  {time:tr.loadDone,label:'انطلاق إسعاف '+(tr.vehicleIndex+1)+' بالحالة '+tr.patient.id+' · رحلة '+tr.tripNumber+'/8',view:'drive',patient:tr.patient.id,bedId:tr.bedId},
+  {time:tr.loopStart,label:'لفة العودة '+tr.tripNumber+'/8 للإسعاف '+(tr.vehicleIndex+1)+' بعد تسليم '+tr.patient.id,view:'loop',patient:tr.patient.id,bedId:tr.bedId},
   {time:tr.loopEnd,label:'الوصول إلى طابور الجهة المقابلة · إسعاف '+(tr.vehicleIndex+1),view:'loop',patient:tr.patient.id,bedId:tr.bedId},
   {time:tr.driveDone,label:'وصول '+tr.patient.id+' إلى المستشفى',view:'hospital',patient:tr.patient.id,bedId:tr.bedId},
   {time:tr.receptionStart,label:'تسليم '+tr.patient.id+' إلى استقبال الطوارئ',view:'intake',patient:tr.patient.id,bedId:tr.bedId},
   {time:tr.done,label:'وصول '+tr.patient.id+' إلى السرير '+tr.bedId,view:'bed',patient:tr.patient.id,bedId:tr.bedId}
- ]),{time:allBedsAt,label:'استلام الحالات الـ16 · اكتملت الغرف الثماني',view:'beds'},...support.events].sort((a,b)=>a.time-b.time);
+ ]),{time:allBedsAt,label:'استلام الحالات الـ16 · اكتملت الغرف الثماني',view:'beds'},{time:greenA.start,label:'Switch · كل بسطتين متجاورتين تتبادلان فرق المسعفين',view:'green'},{time:greenB.start,label:'Switch · الفرق تلتفت للخلف وتنتقل إلى البسطات المقابلة',view:'green'},{time:roomSwitch.start,label:'Switch · طلاب كل غرفة يتبادلون السريرين',view:'beds'},...support.events].sort((a,b)=>a.time-b.time);
 
  const savedInstances=[];
  const relocated={'intake-1':{x:-2.5,z:.5},'intake-2':{x:2.5,z:.5}};for(const [id,bed] of Object.entries(beds)){const r=facility.roomData.find(r=>r.id.split('/').includes(id)),side=Math.sign(bed.x-r.x);relocated['doctor-'+id]={x:r.x+side*2.65,z:10.8};for(let k=1;k<=5;k++){const a=facility.population.actors.find(a=>a.id==='student-'+id+'-'+k);if(a)relocated[a.id]=k<=3?{x:r.x+side*2.7,z:7.5+(k-1)*1.35}:{x:r.x+side*.6,z:k===4?10:11.1};}}
- for(const batch of facility.crowd.children){const items=[];(batch.userData.actorIds||[]).forEach((id,i)=>{if(id.startsWith('out-patient-')||support.hiddenActors.has(id)||relocated[id]){batch.getMatrixAt(i,matrix);items.push({i,id,matrix:matrix.clone()});}});if(items.length)savedInstances.push({batch,items});}
+ for(const batch of facility.crowd.children){const items=[];(batch.userData.actorIds||[]).forEach((id,i)=>{if(id.startsWith('out-patient-')||id.startsWith('triage-')||support.hiddenActors.has(id)||relocated[id]||medicPlans.has(id)){batch.getMatrixAt(i,matrix);items.push({i,id,matrix:matrix.clone()});}});if(items.length)savedInstances.push({batch,items});}
  function staticScene(visible){
   facility.patientVisuals.forEach(o=>o.visible=visible);facility.curtains.forEach(c=>c.node.visible=visible);
   for(const {batch,items} of savedInstances){for(const item of items){if(visible)batch.setMatrixAt(item.i,item.matrix);else if(relocated[item.id]){
     const a=facility.population.actors.find(a=>a.id===item.id),p=relocated[item.id],m=item.matrix.clone();m.elements[12]+=p.x-a.x;m.elements[14]+=p.z-a.z;batch.setMatrixAt(item.i,m);
-   }else batch.setMatrixAt(item.i,zero);}batch.instanceMatrix.needsUpdate=true;}
-  renderer.shadowMap.needsUpdate=true;
+   }else if(medicPlans.has(item.id)&&!support.hiddenActors.has(item.id))batch.setMatrixAt(item.i,item.matrix);else batch.setMatrixAt(item.i,zero);}batch.instanceMatrix.needsUpdate=true;}
+  for(const m of movers)m.key=null;renderer.shadowMap.needsUpdate=true;
+ }
+ // Room switch plan: student k of one bed takes the place of student k at the other bed, walking via the room front (z≈6, near the door).
+ const studentPlans=new Map();
+ for(const r of facility.roomData){const [b1,b2]=r.id.split('/');for(let k=1;k<=5;k++){const a='student-'+b1+'-'+k,b='student-'+b2+'-'+k;if(!relocated[a]||!relocated[b])continue;
+  for(const [from,to,lane] of [[a,b,6],[b,a,5.4]]){const p0={...relocated[from],yaw:actorById.get(from).yaw},p1={...relocated[to],yaw:actorById.get(to).yaw},route=makePath([p0,[p0.x,lane],[p1.x,lane],p1]);studentPlans.set(from,{p0,p1,route,dur:route.length/1.2});}}}
+ roomSwitch.end=roomSwitch.start+Math.max(...[...studentPlans.values()].map(s=>s.dur));
+ function studentPose(s,t){if(t<roomSwitch.start)return {...s.p0,moving:false};if(t<roomSwitch.start+s.dur)return walkPose(s.route,(t-roomSwitch.start)/s.dur,s.p0.yaw,s.p1.yaw);return {...s.p1,moving:false};}
+ // Movers re-place every instance of a static crowd figure: M = T(pose)·Ry(yaw)·(T(origin)·Ry(origin yaw))⁻¹·part.
+ const movers=[],moverByid=new Map(),moverMatrix=new THREE.Matrix4(),moverWork=new THREE.Matrix4(),dirtyBatches=new Set();let lastShadow=-1;
+ for(const {batch,items} of savedInstances)for(const item of items){const plan=medicPlans.get(item.id),student=studentPlans.get(item.id);if((!plan||support.hiddenActors.has(item.id))&&!student)continue;
+  let m=moverByid.get(item.id);if(!m){const a=actorById.get(item.id);m={id:item.id,pose:student?(t=>studentPose(student,t)):(t=>medicPose(plan,t)),inv0:new THREE.Matrix4().makeRotationY(a.yaw).setPosition(a.x,0,a.z).invert(),items:[],key:null};moverByid.set(item.id,m);movers.push(m);}
+  m.items.push({batch,i:item.i,matrix:item.matrix});}
+ function applyMovers(t){
+  for(const m of movers){const q=m.pose(t),bob=q.moving?.025*Math.abs(Math.sin(t*9)):0,key=q.x.toFixed(3)+'|'+q.z.toFixed(3)+'|'+q.yaw.toFixed(3)+'|'+bob.toFixed(3);if(key===m.key)continue;m.key=key;
+   moverMatrix.makeRotationY(q.yaw).setPosition(q.x,bob,q.z).multiply(m.inv0);for(const it of m.items){moverWork.multiplyMatrices(moverMatrix,it.matrix);it.batch.setMatrixAt(it.i,moverWork);dirtyBatches.add(it.batch);}}
+  if(!dirtyBatches.size)return;for(const b of dirtyBatches){b.instanceMatrix.needsUpdate=true;b.computeBoundingSphere();}dirtyBatches.clear();
+  // Shadows follow moving figures at a few updates per second rather than every frame.
+  if(Math.abs(t-lastShadow)>.3){lastShadow=t;renderer.shadowMap.needsUpdate=true;}
  }
 
  function updateEvacuationTeam(t){
@@ -275,15 +315,14 @@ export function createDrill({scene,facility,renderer,onChange=()=>{},onFocus=()=
  function createScenarioSupport(allBedsAt,redTrip){
   const hiddenActors=new Set(),heatStart=Math.max(...transfers.map(tr=>tr.driveDone)),heatResolved=heatStart+110,clinicalReview=Math.max(allBedsAt+45,transfers.filter(tr=>tr.vehicleIndex===0).at(-1).returnDone+8);
   const affected=[1,2,5,6].map((id,i)=>{
-   const tent=facility.siteLayout.tents.find(t=>t.id===id),dir=tent.yaw===0?1:-1;
-   const original=facility.population.actors.find(a=>a.id==='paramedic-'+id+'-1'),helperOriginal=facility.population.actors.find(a=>a.id==='paramedic-'+id+'-2');
-   hiddenActors.add(original.id);hiddenActors.add(helperOriginal.id);
+   const plan=medicPlans.get('paramedic-'+id+'-1'),helperPlan=medicPlans.get('paramedic-'+id+'-2'),tent=plan.final,dir=tent.yaw===0?1:-1,original=plan.p2,helperOriginal=helperPlan.p2;
+   hiddenActors.add('paramedic-'+id+'-1');hiddenActors.add('paramedic-'+id+'-2');
    const model=avatar({role:'nurse',index:i+30}),helper=avatar({role:'nurse',index:i+35});
-   tag(model.root,'إجهاد حراري · فريق '+id,'#986531',2.6,.8);
-   const end=point(tent.x+(i%2?1.4:-1.4),22-dir*1.75),walk=makePath([original,[tent.x-1.8,tent.z+dir*3.15],end]);
-   const assist=makePath([helperOriginal,[tent.x+1.8,tent.z+dir*3.15],[end.x+.85,end.z]]),rest=makePath([end,[tent.x,tent.z+dir*3.1]]);
+   tag(model.root,'إجهاد حراري · بسطة '+tent.id,'#986531',2.6,.8);
+   const end=point(tent.x+(i%2?1.4:-1.4),22-dir*1.75),walk=makePath([original,[tent.x-1.5,tent.z+dir*2.6],end]);
+   const assist=makePath([helperOriginal,[tent.x+1.5,tent.z+dir*2.6],[end.x+.85,end.z]]),rest=makePath([end,[tent.x,tent.z+dir*2.5]]);
    // Four illustrative secondary casualties; the brief does not specify a count.
-   return {id:'H0'+(i+1),tent,model,helper,original,helperOriginal,walk,assist,rest,end,start:heatStart+i*2,collapse:heatStart+12+i*2,help:heatStart+23+i*2,seated:heatStart+62+i*2};
+   return {id:'H0'+(i+1),tent,plan,helperPlan,model,helper,original,helperOriginal,walk,assist,rest,end,start:heatStart+i*2,collapse:heatStart+12+i*2,help:heatStart+23+i*2,seated:heatStart+62+i*2};
   });
   const pad=new THREE.Group();roots.add(pad);pad.position.set(-29,0,30);
   part(pad,'cylinder',[7.3,7.3,.025],'#e6e6d9',0,.025,0);part(pad,'cylinder',[6.95,6.95,.025],'#43595d',0,.042,0);
@@ -312,11 +351,11 @@ export function createDrill({scene,facility,renderer,onChange=()=>{},onFocus=()=
   function update(t){
    pad.visible=helicopter.visible=active;pad.userData.tagVisible=t<clinicalReview;helicopter.position.set(-29,0,30);helicopter.rotation.y=Math.PI/2;rotor.rotation.y=t>=loaded?t*24:0;tailRotor.rotation.x=t>=loaded?t*31:0;
    if(t>=airborne){const u=clamp((t-airborne)/18);helicopter.position.set(-29-u*28,u*u*45,30-u*20);}
-   for(const h of affected){const m=h.model,g=h.helper;m.root.visible=g.root.visible=active;let q=placed(h.original),moving=false,type='stand';
+   for(const h of affected){const m=h.model,g=h.helper;m.root.visible=g.root.visible=active;let q=placed(h.original,h.original.yaw),moving=false,type='stand';if(t<h.start){q=medicPose(h.plan,t);moving=q.moving;}
     if(t>=h.start&&t<h.collapse){q=sample(h.walk,(t-h.start)/(h.collapse-h.start));moving=true;}else if(t>=h.collapse&&t<h.seated){q=placed(h.end);type='ground';}else if(t>=h.seated&&t<h.seated+18){q=sample(h.rest,(t-h.seated)/18);moving=true;}else if(t>=h.seated+18){q=placed(h.rest.points.at(-1),h.tent.yaw);type='floor-seated';}
     position(m,q);m.pose(t,moving,type);m.root.userData.tagVisible=t>=h.collapse&&t<heatResolved;
     if(t>=h.collapse&&t<h.collapse+2){const u=(t-h.collapse)/2;m.pose(t,false);m.figure.rotation.x=Math.PI/2*u;m.figure.position.set(0,.2*u,-.8*u);}
-    let hp=placed(h.helperOriginal),hm=false;if(t>=h.collapse&&t<h.help){hp=sample(h.assist,(t-h.collapse)/(h.help-h.collapse));hm=true;}else if(t>=h.help&&t<h.seated){hp={x:h.end.x+.85,z:h.end.z,yaw:-Math.PI/2};}else if(t>=h.seated){hp=sidePoint(q,.75);hm=moving;}
+    let hp=placed(h.helperOriginal,h.helperOriginal.yaw),hm=false;if(t<h.collapse){hp=medicPose(h.helperPlan,t);hm=hp.moving;}else if(t>=h.collapse&&t<h.help){hp=sample(h.assist,(t-h.collapse)/(h.help-h.collapse));hm=true;}else if(t>=h.help&&t<h.seated){hp={x:h.end.x+.85,z:h.end.z,yaw:-Math.PI/2};}else if(t>=h.seated){hp=sidePoint(q,.75);hm=moving;}
     position(g,hp);g.pose(t,hm,t>=h.help&&t<h.seated?'seated':'stand');g.root.userData.tagVisible=false;if(t>=h.help&&t<h.seated)g.arms.forEach(a=>a.rotation.x=-.8);
    }
    if(t<clinicalReview)return;
@@ -369,6 +408,7 @@ export function createDrill({scene,facility,renderer,onChange=()=>{},onFocus=()=
   station.visible=yellowFurniture.visible=active;
   for(const recovery of redRecoveries){recovery.litter.visible=active&&t>=recovery.atBody;recovery.patient.deathAnchor.visible=active&&t>=recovery.patient.arrival;}
   for(const staff of yellowStaff){staff.model.root.visible=active;position(staff.model,placed(staff,staff.yaw));staff.model.pose(t,false,'kneeling');staff.model.arms[0].rotation.x=-.5+Math.sin(t*.6+staff.x)*.1;staff.model.root.userData.tagVisible=false;}
+  for(const l of triageLeaders){const moving=t>=l.walkStart&&t<l.arrival,at=t>=l.arrival;l.model.root.visible=active;position(l.model,at?l.spot:sample(l.walkPath,(t-l.walkStart)/(l.arrival-l.walkStart)));l.model.pose(t,moving);l.model.root.userData.tagVisible=at;}
   for(const doctor of doctors){const model=doctor.model,moving=t>=doctor.walkStart&&t<doctor.arrival,at=t>=doctor.arrival,pose=at?placed(doctor,doctor.yaw):sample(doctor.walkPath,(t-doctor.walkStart)/(doctor.arrival-doctor.walkStart));model.root.visible=active;position(model,pose);model.pose(t,moving);if(moving)model.arms[1].rotation.x=-.15+Math.sin(t*4+doctor.id)*.06;model.root.userData.tagVisible=at;
    const parent=at?model.root:model.arms[1];if(doctor.bag.parent!==parent)parent.add(doctor.bag);doctor.bag.position.set(at?.65:.05,at?.18:-.7,at?.06:.04);
    const assessing=patients.find(p=>p.doctorIndex===doctor.id-1&&t>=p.assess&&t<p.classified);if(assessing){model.arms[0].rotation.x=-.7+Math.sin(t*2+doctor.id)*.12;model.arms[1].rotation.x=-.25;}
@@ -422,16 +462,17 @@ export function createDrill({scene,facility,renderer,onChange=()=>{},onFocus=()=
   updateRecoveryTeam(t);
   support.update(t);
   updateEvacuationTeam(t);
+  if(active)applyMovers(t);
   render();const snapshot=getSnapshot();const stamp=Math.floor(t*4);if(force||stamp!==lastNotice){lastNotice=stamp;onChange(snapshot);}
-  if(follow){let cameraStage='court';if(patients.some(p=>p.state==='collapsing'))cameraStage='collapse';else if(t<triageComplete+2)cameraStage='triage';else if(t<transportStart)cameraStage='green';else if(t>=support.clinicalReview)cameraStage=t>=support.loaded?'helipad':t>=support.departure?'hospital':'beds';else if(t>=support.heatStart&&t<support.heatResolved)cameraStage='heat';else if(transfers.every(tr=>t>=tr.done))cameraStage='beds';else if(transfers.some(tr=>t>=tr.unloaded&&t<tr.done))cameraStage='hospital';else if(transfers.some(tr=>t>=tr.loadDone&&t<tr.driveDone))cameraStage='drive';else cameraStage='loading';if(cameraStage!==lastFocus){lastFocus=cameraStage;onFocus(cameraStage,snapshot);}}
+  if(follow){let cameraStage='court';if(patients.some(p=>p.state==='collapsing'))cameraStage='collapse';else if(t>=greenA.start-1&&t<greenA.end||t>=greenB.start-1&&t<greenB.end)cameraStage='green';else if(t>=roomSwitch.start-1&&t<roomSwitch.end)cameraStage='beds';else if(t<triageComplete+2)cameraStage='triage';else if(t<transportStart)cameraStage='green';else if(t>=support.clinicalReview)cameraStage=t>=support.loaded?'helipad':t>=support.departure?'hospital':'beds';else if(t>=support.heatStart&&t<support.heatResolved)cameraStage='heat';else if(transfers.every(tr=>t>=tr.done))cameraStage='beds';else if(transfers.some(tr=>t>=tr.unloaded&&t<tr.done))cameraStage='hospital';else if(transfers.some(tr=>t>=tr.loadDone&&t<tr.driveDone))cameraStage='drive';else cameraStage='loading';if(cameraStage!==lastFocus){lastFocus=cameraStage;onFocus(cameraStage,snapshot);}}
 
  }
  function getSnapshot(){
   const exited=patients.filter(p=>time>=p.start).length,classified=patients.filter(p=>time>=p.classified).length,green=patients.filter(p=>p.kind==='green'&&time>=p.arrival).length;
-  const yellow=patients.filter(p=>p.kind==='yellow'&&time>=p.arrival&&!transfers.some(tr=>tr.patient===p&&time>=tr.atPatient)).length,arrived=transfers.filter(tr=>time>=tr.done).length,red=time>=critical.classified?1:0,black=patients.filter(p=>p.kind==='black'&&time>=p.arrival).length,blackDelivered=redRecoveries.filter(r=>time>=r.done).length;
+  const yellow=patients.filter(p=>p.kind==='yellow'&&time>=p.arrival&&!transfers.some(tr=>tr.patient===p&&time>=tr.atPatient)).length,arrived=transfers.filter(tr=>time>=tr.done).length,red=patients.filter(p=>p.kind==='red'&&time>=p.classified).length,black=patients.filter(p=>p.kind==='black'&&time>=p.arrival).length,blackDelivered=redRecoveries.filter(r=>time>=r.done).length;
   const current=patients.filter(p=>time>=p.assess&&time<p.classified),collapse=patients.find(p=>p.state==='collapsing'),moving=transfers.find(tr=>time>=tr.atPatient&&time<tr.done),recovering=patients.find(p=>['recovery-lift','carried-to-black','recovery-lower'].includes(p.state));
   let stage='إنذار الحريق والتدافع · إخلاء 30 مصاباً';
-  if(time===0&&!playing)stage='جاهزة · فرضية الحريق والتدافع';else if(time>=support.airborne)stage='إقلاع المروحية باتجاه المستشفى المرجعي';else if(time>=support.departure)stage='نقل R01 من المستشفى إلى مهبط الإخلاء الجوي';else if(time>=support.clinicalReview)stage='R01 · قرار الإحالة إلى مركز ذي إمكانات قسطرة قلبية';else if(time>=support.heatStart&&time<support.heatResolved)stage='حدث طارئ · إجهاد حراري لأربعة من أعضاء الفرق الراجلة';else if(arrived===16)stage='اكتملت الغرف الثماني · استلام 16 حالة';else if(collapse)stage='سقوط حالة عند المخرج · '+collapse.id;else if(current.length)stage='فرز متزامن · '+current.length+' من 4 أعضاء';else if(recovering)stage='فريق حمل ينقل '+recovering.id+' إلى المنطقة السوداء';else if(moving)stage='نقل '+moving.patient.id+' إلى '+moving.bedId+' · تم التسليم '+arrived+'/16';else if(classified===30)stage='توزيع الحالات ونقل الأحمر أولاً ثم الأصفر';
+  if(time===0&&!playing)stage='جاهزة · فرضية الحريق والتدافع';else if(time>=support.airborne)stage='إقلاع المروحية باتجاه المستشفى المرجعي';else if(time>=support.departure)stage='نقل R01 من المستشفى إلى مهبط الإخلاء الجوي';else if(time>=support.clinicalReview)stage='R01 · قرار الإحالة إلى مركز ذي إمكانات قسطرة قلبية';else if(time>=roomSwitch.start&&time<roomSwitch.end)stage='Switch · طلاب كل غرفة يتبادلون السريرين (8 غرف)';else if(time>=greenA.start&&time<greenA.end)stage='Switch · كل بسطتين متجاورتين تتبادلان فرق المسعفين';else if(time>=greenB.start&&time<greenB.end)stage='Switch · الفرق تلتفت للخلف وتنتقل إلى البسطات المقابلة';else if(time>=support.heatStart&&time<support.heatResolved)stage='حدث طارئ · إجهاد حراري لأربعة من أعضاء الفرق الراجلة';else if(arrived===16)stage='اكتملت الغرف الثماني · استلام 16 حالة';else if(collapse)stage='سقوط حالة عند المخرج · '+collapse.id;else if(current.length)stage='فرز متزامن · '+current.length+' من 4 أعضاء';else if(recovering)stage='فريق حمل ينقل '+recovering.id+' إلى المنطقة السوداء';else if(moving)stage='نقل '+moving.patient.id+' إلى '+moving.bedId+' · تم التسليم '+arrived+'/16';else if(classified===30)stage='توزيع الحالات ونقل الأحمر أولاً ثم الأصفر';
   const referral=time>=support.departure,airborne=time>=support.airborne;
   return {active,playing,time,duration,speed,follow,stage,exited,classified,green,yellow,red,black,blackDelivered,redDelivered:0,hospital:arrived,occupied:arrived-(referral?1:0),referral:airborne?'airborne':referral?'to-helipad':time>=support.clinicalReview?'requested':'pending',heat:{affected:time>=support.heatStart?4:0,assisted:time>=Math.max(...support.affected.map(h=>h.help))?4:0,resolved:time>=support.heatResolved},evacuationOrganizers:5,triageDoctors:doctors.map(d=>({id:d.id,x:d.model.root.position.x,z:d.model.root.position.z,arrived:time>=d.arrival,patient:current.find(p=>p.doctorIndex===d.id-1)?.id||null})),yellowStaff:yellowStaff.length,yellowClassified:patients.filter(p=>p.kind==='yellow'&&time>=p.classified).length,greenClassified:patients.filter(p=>p.kind==='green'&&time>=p.classified).length,redClassified:red,
   patients:patients.map(p=>({id:p.id,kind:p.kind,state:p.state,admitted:transfers.some(tr=>tr.patient===p&&time>=tr.done),x:p.world.x,z:p.world.z,doctor:p.doctorIndex+1,onTrolley:p.person.root.visible&&p.person.trolley.visible,carried:!!p.carried&&time>=p.start&&time<p.arrival+4,assisted:!!p.assisted&&time>=p.start&&time<p.arrival,restPose:p.restPose,escorted:!!p.escort&&time>=p.handoff,guide:p.escort?{x:p.escort.root.position.x,z:p.escort.root.position.z,joined:time>=p.handoff}:null,destination:p.kind==='green'?'F'+p.tent.id:p.kind==='black'?'black':transfers.find(tr=>tr.patient===p).bedId})),vehicles:vehicles.map((v,i)=>{const tr=currentTrip(i,time),aboard=transfers.filter(q=>q.vehicleIndex===i&&time>=q.loadDone&&time<q.driveDone),completedTrips=transfers.filter(q=>q.vehicleIndex===i&&time>=q.done).length;return {id:i+1,x:v.root.position.x,z:v.root.position.z,yaw:v.root.rotation.y,completedTrips,plannedTrips:2,tripNumber:tr?.tripNumber||0,patient:tr&&time>=tr.atPatient&&time<tr.done?tr.patient.id:null,cargoCount:aboard.length,onLoop:!!tr&&time>=tr.loopStart&&time<tr.loopEnd,loopProgress:tr?clamp((time-tr.loopStart)/(tr.loopEnd-tr.loopStart)):0};})};
@@ -446,5 +487,5 @@ export function createDrill({scene,facility,renderer,onChange=()=>{},onFocus=()=
  function tick(dt){if(!active)return;if(playing){time=Math.min(duration,time+dt*speed);if(time>=duration)playing=false;update(time);} }
  function setSpeed(value){speed=[.5,1,2,4,8,16,32].includes(Number(value))?Number(value):1;onChange(getSnapshot());}
  function setFollow(value){follow=!!value;lastFocus='';if(active)update(time,true);}
- return {play,pause,reset,exit,seek,tick,setSpeed,setFollow,getSnapshot,get active(){return active},get playing(){return playing},get clock(){return time},duration,patients,transfers,staging,vehiclePoseAt,beds,doctors,yellowStaff,yellowFurniture,emptyStretchers,evacuationTeam,updateEvacuationTeam,support,recoveryTeam,redRecoveries,events,triageComplete,transportStart,visuals,roots,paths:{exit:patients[0].exitPath},setStaticVisible:staticScene};
+ return {switches:{greenA,greenB,room:roomSwitch,medicPlans,studentPlans,movers},triageLeaders,play,pause,reset,exit,seek,tick,setSpeed,setFollow,getSnapshot,get active(){return active},get playing(){return playing},get clock(){return time},duration,patients,transfers,staging,vehiclePoseAt,beds,doctors,yellowStaff,yellowFurniture,emptyStretchers,evacuationTeam,updateEvacuationTeam,support,recoveryTeam,redRecoveries,events,triageComplete,transportStart,visuals,roots,paths:{exit:patients[0].exitPath},setStaticVisible:staticScene};
 }

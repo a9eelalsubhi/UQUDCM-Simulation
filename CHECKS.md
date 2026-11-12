@@ -66,4 +66,13 @@ An iPad stayed at 0% on the loading screen; the owner asked for every visitor to
 
 Not verified on a physical iPad.
 
+## Proposal version 2, 12 November 2026
+
+See SCENARIO.md for the full comparison. Verified in the browser:
+
+- Population 203 = 30 primary + 173 participants; areas 112 rooms, 14 reception, 69 tents (12 + 48 medics + 9 leaders), 8 triage (2 deceased + 4 members + 2 leaders). Matches both proposal tables.
+- Triage 4 red, 12 yellow, 12 green, 2 black. Transfers R01→B4, R02→C2, R03→B3, R04→C1, then Y01–Y12; two ambulances alternate, 8 trips each.
+- Green switch 1 at 2:54, switch 2 at 3:41; every tent ends with exactly 4 medics; a tent-1 medic goes 1 → 2 → 8. Room switch at 35:26, after all 16 admissions and before R01's referral (35:59). Heat stress starts at 34:04, after the green switches; affected medics follow their team's moves first.
+- End state: 16 admitted, 15 occupied after the air referral, 16 trips (8 + 8), duration 38:59. No console errors.
+
 Limits: the human models remain procedural; no photographic human scan or performance benchmark on a physical GPU is claimed. Visual quality remains experimental and is not deployed to the existing site.
