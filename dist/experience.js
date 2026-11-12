@@ -24,7 +24,7 @@ const cameraDetails=document.createElement('details');cameraDetails.className='c
 const eventSection=document.querySelector('.event-section');const events=document.createElement('details');events.className='events-fold';events.innerHTML='<summary>محطات المحاكاة والتصفية</summary>';eventSection.before(events);events.append(eventSection);
 const detailsButton=$('show-sim-details');detailsButton.onclick=()=>{simPanel.classList.toggle('expanded');detailsButton.setAttribute('aria-expanded',simPanel.classList.contains('expanded'));};
 const closePanel=document.createElement('button');closePanel.className='panel-collapse';closePanel.textContent='إخفاء التفاصيل';closePanel.onclick=()=>{simPanel.classList.remove('expanded');detailsButton.setAttribute('aria-expanded','false');};document.querySelector('.simulation-heading').append(closePanel);
-function updateMode(){const active=document.body.classList.contains('simulation-view');detailsButton.hidden=!active;if(!active)simPanel.classList.remove('expanded');}
+function updateMode(){const active=document.body.classList.contains('simulation-view');detailsButton.hidden=!active;if(!active)simPanel.classList.remove('expanded');measureBars();}
 new MutationObserver(updateMode).observe(document.body,{attributes:true,attributeFilter:['class']});updateMode();
 document.addEventListener('click',e=>{for(const menu of document.querySelectorAll('.bar-menu, .camera-menu'))if(menu.open&&!menu.contains(e.target))menu.open=false;});
 document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;for(const menu of document.querySelectorAll('.bar-menu[open], .camera-menu[open]')){menu.open=false;menu.querySelector('summary').focus();}});

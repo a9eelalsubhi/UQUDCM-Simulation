@@ -53,3 +53,13 @@ html[data-theme='dark'] .drill-live li.bump{animation-name:bump-dark}@keyframes 
 /* Quality tiers, 5 November 2026: the quality menu must be reachable on phones, where it matters most */
 .menu-content .quality-label{display:flex!important;gap:10px}.menu-content .quality-label select{max-width:60%}
 @media(max-width:800px){#experience-bar .menu-content{position:fixed;top:calc(var(--bar-end,130px) + 8px);left:8px;right:8px;width:auto;max-height:calc(100vh - var(--bar-end,130px) - 24px)}.menu-content .quality-label select{flex:1;max-width:none;min-height:38px}}
+/* Control room panel, 12 November 2026: start below the (taller) playback bar at every width, and keep the lab toolbar from covering it */
+body.simulation-view #simulation-panel{top:calc(var(--play-end,290px) + 10px)}
+body.simulation-view #location-pill{top:calc(var(--play-end,290px) + 10px)}
+body.simulation-view:has(#simulation-panel.expanded) #lab-toolbar{display:none}
+@media(min-width:801px){body.simulation-view:has(#simulation-panel.expanded) #location-pill{max-width:calc(100% - 430px)}}
+/* Fleet section: same disclosure marker as the other folds, readable note */
+.fleet-panel>summary{list-style:none}.fleet-panel>summary::-webkit-details-marker{display:none}
+.fleet-panel>summary>span:first-child:before,.fleet-panel>summary:before{content:'◂';margin-left:6px;font-size:11px}.fleet-panel[open]>summary:before{content:'▾'}
+.fleet-panel>p{font-size:11px}
+html[data-theme='dark'] .scenario-operations{color:#c9dccf}html[data-theme='dark'] .scenario-operations span{color:#e2c48f}html[data-theme='dark'] .fleet-panel>p{color:#bbd2c2}
