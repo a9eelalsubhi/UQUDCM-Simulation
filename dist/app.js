@@ -4,7 +4,7 @@ import {startVisualLab} from './lab-visuals.js?v=20261112b';
 import {OrbitControls} from './vendor/OrbitControls.js';
 import {mergeGeometries} from './vendor/BufferGeometryUtils.js';
 import {buildFacility,roomData,siteLayout} from './facility.js?v=20261112b';
-import {createDrill} from './drill.js?v=20261112b';
+import {createDrill} from './drill.js?v=20261112d';
 import {createDashboard} from './dashboard.js?v=20261112b';
 import {stadiumOutline} from './traffic.js?v=20261112b';
 import {EffectComposer} from './vendor/postprocessing/EffectComposer.js';
@@ -139,7 +139,7 @@ function updateDrill(s){
  $('live-stage').textContent=s.stage;for(const [id,n] of [['classified',s.classified],['green',s.green],['yellow',s.yellow],['black',s.blackDelivered],['beds',s.hospital],['fleet',trips]]){const el=$('live-'+id);if(el.textContent!==String(n)){el.textContent=n;el.parentElement.classList.remove('bump');void el.offsetWidth;el.parentElement.classList.add('bump');}}
  $('drill-progress').style.setProperty('--p',(s.duration?s.time/s.duration*100:0)+'%');
  $('fleet-complete').textContent=trips+' / 16';for(const v of s.vehicles){const card=$('fleet-'+v.id);card.classList.toggle('on-loop',v.onLoop);card.querySelector('b').textContent=v.completedTrips+' / 8';card.querySelector('small').textContent=v.patient?v.patient+' · رحلة '+v.tripNumber:v.completedTrips===8?'اكتمل النقل':v.tripNumber?'عودة / انتظار الدور':'في طابور الجهة المقابلة';}
- for(const [bed,id] of [['b4','R01'],['c2','Y01']]){const p=s.patients.find(p=>p.id===id),arrived=p?.state==='bed';$('bed-'+bed).innerHTML=bed.toUpperCase()+' <i>'+(['referral-transfer','helipad-transfer','airborne'].includes(p?.state)?'أحيلت الحالة '+id:arrived?'وصلت '+id:['loading-walk','loading','aboard','unloading','reception','hospital-walk','bed-transfer'].includes(p?.state)?id+' في الطريق':'بانتظار '+id)+'</i>';$('bed-'+bed).classList.toggle('arrived',arrived);}
+ for(const [bed,id] of [['b4','R01'],['c2','R02']]){const p=s.patients.find(p=>p.id===id),arrived=p?.state==='bed';$('bed-'+bed).innerHTML=(drill?.transfers.find(tr=>tr.patient.id===id)?.bedId||bed.toUpperCase())+' <i>'+(['referral-transfer','helipad-transfer','airborne'].includes(p?.state)?'أحيلت الحالة '+id:arrived?'وصلت '+id:['loading-walk','loading','aboard','unloading','reception','hospital-walk','bed-transfer'].includes(p?.state)?id+' في الطريق':'بانتظار '+id)+'</i>';$('bed-'+bed).classList.toggle('arrived',arrived);}
 }
 function switchSimulation(open){document.body.classList.toggle('simulation-view',open);$('simulation-panel').hidden=!open;$('panel').hidden=open;$('simulation-tab')?.classList.toggle('selected',open);cameraGoal=null;resize();}
 function updateTimeline(snapshot){if(!drill)return;const items=[...$('event-list').children];for(const item of items){const t=Number(item.dataset.time);item.classList.toggle('passed',snapshot.time>=t);item.classList.toggle('current',snapshot.time>=t&&snapshot.time<t+4);}}
