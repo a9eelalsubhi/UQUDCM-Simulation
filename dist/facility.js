@@ -1,7 +1,7 @@
 import * as THREE from './vendor/three.module.js';
-import {Q} from './quality.js?v=20261112a';
-import {labSurface,surfaceUV,foliage,humanTorso,cloth as clothMat,skin as skinMat,hair as hairMat,plastic} from './lab-visuals.js?v=20261112a';
-import {ambulanceLoop,stadiumOutline,lapPoints,pathLength} from './traffic.js?v=20261112a';
+import {Q} from './quality.js?v=20261112b';
+import {labSurface,surfaceUV,foliage,humanTorso,cloth as clothMat,skin as skinMat,hair as hairMat,plastic} from './lab-visuals.js?v=20261112b';
+import {ambulanceLoop,stadiumOutline,lapPoints,pathLength} from './traffic.js?v=20261112b';
 import {mergeGeometries} from './vendor/BufferGeometryUtils.js';
 export const roomData=[
  {id:'A1/A2',zone:'A',x:-39.75,color:'#df292d'},{id:'A3/A4',zone:'A',x:-33.25,color:'#df292d'},
@@ -246,17 +246,12 @@ export function buildFacility(scene){
 
 
  });
- // Two facing rows of tents occupy parking bays, with an aisle parallel to the college facade.
- // The aisle uses the underlying asphalt, with no coplanar floor layer.
+ // Two facing rows of بسطات (ground mats, no tents) occupy the parking bays, with an aisle parallel to the college facade.
  function tent(t){
   const g=new THREE.Group();g.position.set(t.x,0,t.z);g.rotation.y=t.yaw;world.add(g);
-  const h=siteLayout.tentSize/2;for(const a of [-h,h])for(const b of [-h,h])cyl(a,1.45,b,.035,2.9,white,g);
-  const canvas=clothMat('#eeeadd',{size:.22,sheen:.3}),canopy=clothMat('#f5f4ee',{size:.22,sheen:.3});
-  let roof=mesh(new THREE.ConeGeometry(h*1.52,1.5,4),canopy,0,3.4,0,g);roof.rotation.y=Math.PI/4;
-  box(0,2.2,-h+.02,2*h,.5,.025,canopy,g);box(0,1.3,-h+.02,2*h,2.6,.025,canvas,g);for(const side of [-1,1])box(side*(h-.02),1.3,0,.025,2.6,2*h,canvas,g);
-  label('GREEN (TRIAGE)\nالفرز الأخضر',0,2.5,h+.03,3.4,.6,'#168b50',undefined,g);
-  label('بسطة '+t.id+' · حالة · 4 مسعفين'+(t.leader?' · تيم ليدر':''),0,2.05,h+.03,3.4,.32,'#edf4e9','#315746',g);
-  box(0,.7,0,1.6,.075,.9,white,g);for(const a of [-.65,.65])for(const b of [-.3,.3])box(a,.35,b,.04,.7,.04,steel,g);
+  // Woven floor mat with a light border; a low numbered sign at the aisle corner.
+  const h=siteLayout.tentSize/2;noShadow(box(0,.075,0,2*h-.1,.02,2*h-.1,clothMat('#e7dec6',{size:.25,sheen:.3}),g));noShadow(box(0,.09,0,2*h-.5,.012,2*h-.5,clothMat('#2f7a52',{size:.25,sheen:.3}),g));
+  cyl(h-.25,.6,h+.1,.03,1.2,dark,g);label('بسطة '+t.id+'\nالفرز الأخضر',h-.25,1.32,h+.13,1.25,.5,'#168b50',undefined,g);
   function member(u,v,angle,config){const o=person(0,0,false,'#3d996a',angle,config);world.remove(o);o.position.set(u,0,v);g.add(o);return o;}
   member(0,-.75,0,{id:'out-patient-'+t.id+'-1',role:'patient',area:'outdoor',station:'F'+t.id,seated:true,floorSeated:true,color:'#739eac'});
   siteLayout.medicSlots.forEach(([u,v,a],j)=>member(u,v,a,{id:'paramedic-'+t.id+'-'+(j+1),role:'paramedic',area:'outdoor',station:'F'+t.id,color:'#24596d'}));

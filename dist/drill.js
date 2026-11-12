@@ -1,8 +1,8 @@
 import * as THREE from './vendor/three.module.js';
 import {RoundedBoxGeometry} from './vendor/RoundedBoxGeometry.js';
-import {Q} from './quality.js?v=20261112a';
-import {humanTorso,cloth as clothMat,skin as skinMat,hair as hairMat,carPaint} from './lab-visuals.js?v=20261112a';
-import {ambulanceJourney,ambulanceReturn,ambulanceDispatch,ambulanceStaging,smoothRoad} from './traffic.js?v=20261112a';
+import {Q} from './quality.js?v=20261112b';
+import {humanTorso,cloth as clothMat,skin as skinMat,hair as hairMat,carPaint} from './lab-visuals.js?v=20261112b';
+import {ambulanceJourney,ambulanceReturn,ambulanceDispatch,ambulanceStaging,smoothRoad} from './traffic.js?v=20261112b';
 
 const COLORS={green:'#338965',yellow:'#d5ae38',red:'#b64340',black:'#303c40',doctor:'#ecf1ed',guide:'#e8903a'};
 const clamp=(v,a=0,b=1)=>Math.max(a,Math.min(b,v));
@@ -254,7 +254,7 @@ export function createDrill({scene,facility,renderer,onChange=()=>{},onFocus=()=
  const roomSwitch={start:allBedsAt+12};
  const support=createScenarioSupport(allBedsAt,transfers[0]);
  const duration=Math.ceil(Math.max(support.airborne+18,...transfers.map(tr=>tr.returnDone+4)));
- const events=[{time:0,label:'الإنذار · إخلاء R01 وR02 محمولتين من الداخل',view:'triage'},{time:.2,label:'خروج فريق الفرز (2 تيم ليدر + 4 أعضاء) من باب الكلية',view:'responders'},...doctors.map(d=>({time:d.arrival,label:'وصول طبيب الفرز '+d.id+' بالحقيبة',view:'triage'})),{time:Math.min(...patients.filter(p=>p.escort).map(p=>p.guideRunStart)),label:'منظمو الأخضر ينطلقون من الخيام للقاء الحالات',view:'green'},
+ const events=[{time:0,label:'الإنذار · إخلاء R01 وR02 محمولتين من الداخل',view:'triage'},{time:.2,label:'خروج فريق الفرز (2 تيم ليدر + 4 أعضاء) من باب الكلية',view:'responders'},...doctors.map(d=>({time:d.arrival,label:'وصول طبيب الفرز '+d.id+' بالحقيبة',view:'triage'})),{time:Math.min(...patients.filter(p=>p.escort).map(p=>p.guideRunStart)),label:'منظمو الأخضر ينطلقون من البسطات للقاء الحالات',view:'green'},
  {time:Math.min(...patients.filter(p=>p.kind==='black').map(p=>p.exitDone)),label:'سقوط الحالتين قرب مخرج الحريق',view:'collapse'},
  {time:critical.classified,label:'R01 · تصنيف أحمر وأولوية النقل',view:'triage',patient:'R01'},
  {time:triageComplete,label:'اكتمال الفرز · 4 أحمر، 12 أصفر، 12 أخضر، 2 أسود',view:'triage'},

@@ -59,7 +59,7 @@ Source: «بروبوزل مشروع طب الكوارث والحشود UQUDCM» 
 | --- | --- | --- |
 | Population | 172 (30 + 142) | **203 (30 + 173)**: 126 in the college, 69 at the tents, 8 at the triage site |
 | Triage | 1 red, 15 yellow, 12 green, 2 black | **4 red, 12 yellow**, 12 green, 2 black |
-| Green area | 8 tents (4 × 2 cases, 4 × 1), 4 students each | **12 tents**, one case each, **4 medics** each (48), **9 team leaders** (tents 1–9) |
+| Green area | 8 tents (4 × 2 cases, 4 × 1), 4 students each | **12 بسطات (ground mats, no tents — owner's instruction)**, one case each, **4 medics** each (48), **9 team leaders** (tents 1–9) |
 | Triage site | 4 assessors outside the count | **2 triage team leaders + 4 triage members** + 2 deceased, counted |
 | Ambulances | 8, two trips each | **2 ambulances circling continuously, 8 trips each** (owner's instruction; the proposal lists 4) |
 | Transport order | R01, then yellow | **R01–R04 first** (B4, C2, B3, C1), then Y01–Y12 |

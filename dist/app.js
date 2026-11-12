@@ -1,12 +1,12 @@
 import * as THREE from './vendor/three.module.js';
-import {Q,tier,tierLabel,chooseQuality} from './quality.js?v=20261112a';
-import {startVisualLab} from './lab-visuals.js?v=20261112a';
+import {Q,tier,tierLabel,chooseQuality} from './quality.js?v=20261112b';
+import {startVisualLab} from './lab-visuals.js?v=20261112b';
 import {OrbitControls} from './vendor/OrbitControls.js';
 import {mergeGeometries} from './vendor/BufferGeometryUtils.js';
-import {buildFacility,roomData,siteLayout} from './facility.js?v=20261112a';
-import {createDrill} from './drill.js?v=20261112a';
-import {createDashboard} from './dashboard.js?v=20261112a';
-import {stadiumOutline} from './traffic.js?v=20261112a';
+import {buildFacility,roomData,siteLayout} from './facility.js?v=20261112b';
+import {createDrill} from './drill.js?v=20261112b';
+import {createDashboard} from './dashboard.js?v=20261112b';
+import {stadiumOutline} from './traffic.js?v=20261112b';
 import {EffectComposer} from './vendor/postprocessing/EffectComposer.js';
 import {RenderPass} from './vendor/postprocessing/RenderPass.js';
 import {GTAOPass} from './vendor/postprocessing/GTAOPass.js';
@@ -103,7 +103,7 @@ function minimap(){
  mc.clearRect(0,0,600,300);mc.fillStyle='#dde3d5';mc.fillRect(0,0,600,300);rect(siteLayout.court.x,siteLayout.court.z,siteLayout.court.w,siteLayout.court.d,'#8c9a9c');rect(0,-10.5,20,29,'#f9faed');rect(-26.5,2,33,20,'#f9faed');rect(26.5,2,33,20,'#f9faed');mc.lineWidth=1;mc.strokeStyle='#738474';
  mapLoop(26,'#485c61',16);mapLoop(26,'#e2dfc5',1);
  roomData.forEach(r=>{rect(r.x,8,6.25,7.8,r.color);mc.strokeRect(mx(r.x-3.25),mz(4),6.5/mapW*600,8/mapD*300);mc.fillStyle='#455f49';mc.font='11px Arial';mc.textAlign='center';mc.fillText(r.zone,mx(r.x),mz(6.5));for(const a of [-1.4,1.4])rect(r.x+a,9,1.2,2.4,'#fff')});
- rect(0,-21.5,18,7,'#65866c');facility.triages.forEach(t=>rect(t.x,t.z,t.w,t.d,t.c));rect(siteLayout.green.x,siteLayout.green.z,siteLayout.green.w,4,'#8c9a9c');siteLayout.tents.forEach(t=>rect(t.x,t.z,4,4,'#f5f4ee'));
+ rect(0,-21.5,18,7,'#65866c');facility.triages.forEach(t=>rect(t.x,t.z,t.w,t.d,t.c));rect(siteLayout.green.x,siteLayout.green.z,siteLayout.green.w,4,'#8c9a9c');siteLayout.tents.forEach(t=>rect(t.x,t.z,3.9,3.9,'#2f7a52'));
  mc.fillStyle='#365d45';mc.font='10px Tahoma';mc.textAlign='center';rect(51,2,16,20,'#b8a58e');mc.fillText('الحريق',mx(51),mz(0));mc.strokeStyle='#4d7157';mc.lineWidth=4;mc.beginPath();mc.ellipse(mx(0),mz(-12.2),11,8,0,0,Math.PI);mc.stroke();mc.fillText('المدخل',mx(0),mz(8));mc.fillText('المواقف',mx(27),mz(33));
  if(drillSnapshot?.active){for(const p of drillSnapshot.patients){if(p.state==='building')continue;mc.fillStyle=p.kind==='green'?'#19734c':p.kind==='yellow'?'#ffd342':p.kind==='black'?'#26383d':'#cf3b38';mc.strokeStyle='#ffffff';mc.lineWidth=.8;mc.beginPath();mc.arc(mx(p.x),mz(p.z),3,0,Math.PI*2);mc.fill();mc.stroke();}rect(-29,30,13,13,'#526a6d');mc.fillStyle='#fff';mc.font='bold 18px Arial';mc.fillText('H',mx(-29),mz(30));for(const v of drillSnapshot.vehicles)rect(v.x,v.z,2.2,3.5,'#fff');}
  if(mode==='walk'){const x=mx(camera.position.x),z=mz(camera.position.z);mc.fillStyle='#173f37';mc.beginPath();mc.arc(x,z,5,0,Math.PI*2);mc.fill();mc.strokeStyle='#f5fff0';mc.lineWidth=2;mc.stroke();mc.strokeStyle='#173f37';mc.beginPath();mc.moveTo(x,z);mc.lineTo(x-Math.sin(yaw)*14,z-Math.cos(yaw)*14);mc.stroke();}
