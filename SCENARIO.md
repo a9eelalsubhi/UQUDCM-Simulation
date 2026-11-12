@@ -62,7 +62,7 @@ Source: «بروبوزل مشروع طب الكوارث والحشود UQUDCM» 
 | Green area | 8 tents (4 × 2 cases, 4 × 1), 4 students each | **12 بسطات (ground mats, no tents — owner's instruction)**, one case each, **4 medics** each (48), **9 team leaders** (tents 1–9) |
 | Triage site | 4 assessors outside the count | **2 triage team leaders + 4 triage members** + 2 deceased, counted |
 | Ambulances | 8, two trips each | **2 ambulances circling continuously, 8 trips each** (owner's instruction; the proposal lists 4) |
-| Transport order | R01, then yellow | **R01–R04 first**, then Y01–Y12; rooms fill in name order A1 → D4, both beds of a room before the next (owner's instruction, 12 Nov 2026). R01 is in A1 and is referred from A1 |
+| Transport order | R01, then yellow | **R01–R04 first**, then Y01–Y12; beds fill from the entrance outward, alternating left and right: B3, C2, B4, C1, B1, C4, B2, C3, A3, D2, A4, D1, A1, D4, A2, D3 (owner's instruction, 12 Nov 2026). R01 is in B3 and is referred from B3 |
 | Rooms switch | — | After all 16 cases are in bed, the 5 students of each bed swap with the 5 of the other bed in the same room |
 | Green switch | — | Each pair of side-by-side tents swaps medic teams; when all pairs finish, teams look back, turn round and cross to the facing tent. Cases and team leaders stay |
 | Replacement case | — | None: the proposal ends with R01 referred by air; no replacement case is added |

@@ -205,8 +205,8 @@ export function createDrill({scene,facility,renderer,onChange=()=>{},onFocus=()=
  // Queue advancement is derived from time, so pause, resume and seeking agree.
  function queuePoint(p,t){const advance=patients.filter(q=>q.doctorIndex===p.doctorIndex&&q.order<p.order).reduce((n,q)=>n+clamp((t-q.classified)/.85),0);return point(p.exam.x,p.exam.z-Math.max(0,p.slot-advance)*1.02);}
  function evacuationPose(p,t){const route=makePath([...p.exitPath.points.slice(0,-1),queuePoint(p,t)]);return sample(route,(t-p.start)/p.exitDuration);}
- // Rooms fill in name order, both beds of a room before the next room: A1, A2, A3 … D4 (owner's instruction).
- const bedOrder=['A1','A2','A3','A4','B1','B2','B3','B4','C1','C2','C3','C4','D1','D2','D3','D4'];
+ // Beds fill from the entrance outward, alternating left and right wing: B3, C2, B4, C1, then outward to the far ends (owner's instruction).
+ const bedOrder=Object.entries(beds).sort((a,b)=>Math.abs(a[1].x)-Math.abs(b[1].x)||a[1].x-b[1].x).map(([id])=>id);
  const lastTrip=Array(8).fill(null),lastBerth=Array(2).fill(null);
  let previousRoadDeparture=-Infinity;
  const transfersPlaceholder={firstDeparture:0};
