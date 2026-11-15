@@ -28,3 +28,10 @@ function updateMode(){const active=document.body.classList.contains('simulation-
 new MutationObserver(updateMode).observe(document.body,{attributes:true,attributeFilter:['class']});updateMode();
 document.addEventListener('click',e=>{for(const menu of document.querySelectorAll('.bar-menu, .camera-menu'))if(menu.open&&!menu.contains(e.target))menu.open=false;});
 document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;for(const menu of document.querySelectorAll('.bar-menu[open], .camera-menu[open]')){menu.open=false;menu.querySelector('summary').focus();}});
+// Fullscreen toggle beside the theme button; hidden where the browser offers no fullscreen for pages (e.g. iPhone Safari).
+const fsButton=document.createElement('button');fsButton.id='fullscreen-toggle';fsButton.type='button';themeButton.after(fsButton);
+const fsEl=()=>document.fullscreenElement||document.webkitFullscreenElement;
+function fsLabel(){const on=!!fsEl(),label=on?'خروج من ملء الشاشة':'ملء الشاشة';fsButton.innerHTML='<span aria-hidden="true">'+(on?'🗗':'⛶')+'</span><span class="theme-label">'+label+'</span>';fsButton.title=label;fsButton.setAttribute('aria-label',label);fsButton.setAttribute('aria-pressed',String(on));}
+fsButton.hidden=!(document.documentElement.requestFullscreen||document.documentElement.webkitRequestFullscreen);
+fsButton.addEventListener('click',()=>{const r=document.documentElement;if(fsEl())(document.exitFullscreen||document.webkitExitFullscreen).call(document);else (r.requestFullscreen||r.webkitRequestFullscreen).call(r);});
+addEventListener('fullscreenchange',fsLabel);addEventListener('webkitfullscreenchange',fsLabel);addEventListener('keydown',e=>{if(e.key==='f'&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&!['INPUT','SELECT','TEXTAREA'].includes(document.activeElement.tagName))fsButton.click();});fsLabel();

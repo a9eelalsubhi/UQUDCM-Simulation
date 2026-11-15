@@ -63,3 +63,6 @@ body.simulation-view:has(#simulation-panel.expanded) #lab-toolbar{display:none}
 .fleet-panel>summary>span:first-child:before,.fleet-panel>summary:before{content:'◂';margin-left:6px;font-size:11px}.fleet-panel[open]>summary:before{content:'▾'}
 .fleet-panel>p{font-size:11px}
 html[data-theme='dark'] .scenario-operations{color:#c9dccf}html[data-theme='dark'] .scenario-operations span{color:#e2c48f}html[data-theme='dark'] .fleet-panel>p{color:#bbd2c2}
+#fullscreen-toggle{white-space:nowrap;background:#eef3eb;color:#284f43;font-size:13px;padding:11px 13px}#fullscreen-toggle .theme-label{margin-right:6px}
+html[data-theme='dark'] #fullscreen-toggle{background:#2a4339!important;color:#edf7f0!important}
+@media(max-width:800px){#fullscreen-toggle .theme-label{display:none}#fullscreen-toggle{padding:9px 11px;font-size:14px}}

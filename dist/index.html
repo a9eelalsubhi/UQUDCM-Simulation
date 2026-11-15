@@ -17,7 +17,7 @@ addEventListener('error',function(e){fail('حدث خطأ أثناء التحمي
 addEventListener('error',function(e){var s=e.target;if(s&&s.tagName==='SCRIPT')fail('تعذّر تحميل أحد ملفات المحاكاة. تأكد من الاتصال ثم أعد المحاولة.','failed to load '+String(s.src).split('/').pop())},true);addEventListener('unhandledrejection',function(e){var r=e.reason;fail('حدث خطأ أثناء التحميل. جرّب إعادة المحاولة، وإن تكرر فحدّث المتصفح.',String(r&&(r.message||r)))});
 setTimeout(function(){fail('التحميل أخذ وقتاً أطول من المتوقع. تأكد من الاتصال ثم أعد المحاولة.','timeout 45s')},45000);})();</script>
 <noscript><p style="position:fixed;inset:auto 0 40%;text-align:center;z-index:30">هذه المحاكاة تتطلب تفعيل JavaScript.</p></noscript>
-<link rel="stylesheet" href="drill.css"><link rel="stylesheet" href="simulation-center.css"><link rel="stylesheet" href="branding.css"><link rel="stylesheet" href="lab.css"><link rel="stylesheet" href="experience.css?v=20261028d"><link rel="stylesheet" href="polish.css?v=20261112c">
+<link rel="stylesheet" href="drill.css"><link rel="stylesheet" href="simulation-center.css"><link rel="stylesheet" href="branding.css"><link rel="stylesheet" href="lab.css"><link rel="stylesheet" href="experience.css?v=20261028d"><link rel="stylesheet" href="polish.css?v=20261115a">
 <button id="drill-start" class="drill-launch"><span class="play-symbol">▶</span><span><b>تشغيل المحاكاة</b><small>30 حالة · إخلاء وفرز ونقل</small></span></button>
 <section id="drill-hud" hidden aria-label="متابعة المحاكاة">
  <div class="drill-kicker"><span class="live-dot"></span> محاكاة حريق الجامعة <button id="drill-exit" title="العودة للجولة" aria-label="إغلاق المحاكاة والعودة للجولة">×</button></div>
@@ -38,4 +38,4 @@ setTimeout(function(){fail('التحميل أخذ وقتاً أطول من ال�
 </aside>
 <dialog id="bed-dashboard"><div class="dialog-head"><div><small>LIVE BED MANAGEMENT</small><h2>لوحة الغرف والأسرّة</h2></div><button class="close" aria-label="إغلاق">×</button></div><div class="board-content"><div class="board-summary"><div><b id="board-total">0 / 16</b><span>أسرّة تم استلام حالاتها</span></div><div><b id="board-complete">0 / 8</b><span>غرف استكملت الاستقبال</span></div><div><b id="board-occupied">0 / 16</b><span>الإشغال الحالي</span></div></div><p class="board-note">تكتمل مرحلة استقبال الغرفة بوصول الحالتين. يظهر إشغال كل سرير بصورة مستقلة؛ يصبح B3 شاغراً بعد مغادرة R01 للإحالة الجوية. تتحدث اللوحة مع التشغيل والرجوع في الخط الزمني.</p><div id="room-cards"></div></div></dialog>
 <footer class="site-credit" aria-label="Made by أصيل الصبحي"><span lang="en" dir="ltr">Made by</span><b>أصيل الصبحي</b></footer>
-<script type="module" src="app.js?v=20261112e"></script><script type="module" src="experience.js?v=20261112c"></script></body></html>
+<script type="module" src="app.js?v=20261112e"></script><script type="module" src="experience.js?v=20261115a"></script></body></html>
