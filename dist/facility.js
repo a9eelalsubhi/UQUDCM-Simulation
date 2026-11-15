@@ -338,6 +338,9 @@ export function buildFacility(scene){
  world.children.slice(roadStart).forEach(o=>o.userData.ambulanceRoad=true);
  stats.ambulanceLoopLength=Math.round(pathLength(lapPoints()));
 
+ // Area leads (owner's list, 15 Nov 2026): a name sign at each area, readable from the overview.
+ const leads=[['منطقة الأحمر والأصفر\nهبة نور الهي',75,5.2,30.2,true],['المنطقة الخضراء\nمالك الأحمدي',27,5.2,33.2,true],['الاستقبال\nجنى حلواني',0,6.6,-8.9,false],['الغرف اليسرى\nشهد حسين',-30,6.6,12.4,false],['الغرف اليمنى\nقصي الحجيلي',30,6.6,12.4,false],['القائد المتنقل\nأصيل الصبحي',7.5,5.2,16,true]];
+ for(const [text,x,y,z,post] of leads){label(text,x,y,z,9,2.25,'#24324f','#ffffff');if(post)cyl(x,(y-1.1)/2,z-.05,.08,y-1.1,dark);}
  roofs.children.forEach(o=>o.position.y+=floorHeight);
  const led=new THREE.MeshStandardMaterial({color:'#fafbf2',emissive:'#fff9ef',emissiveIntensity:.6});for(const r of roomData)box(r.x,3.72+floorHeight,8,1.4,.045,.65,led,roofs);for(const x of [-6,0,6])for(const z of [-3,-9,-15])box(x,3.72+floorHeight,z,1.3,.045,.65,led,roofs);roofs.visible=false;
  world.updateMatrixWorld(true);
