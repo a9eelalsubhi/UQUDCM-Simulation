@@ -338,9 +338,25 @@ export function buildFacility(scene){
  world.children.slice(roadStart).forEach(o=>o.userData.ambulanceRoad=true);
  stats.ambulanceLoopLength=Math.round(pathLength(lapPoints()));
 
- // Area leads (owner's list, 15 Nov 2026): a name sign at each area, readable from the overview.
- const leads=[['منطقة الأحمر والأصفر\nهبة نور الهي',75,5.2,30.2,true],['المنطقة الخضراء\nمالك الأحمدي',27,5.2,33.2,true],['الاستقبال\nجنى حلواني',0,6.6,-8.9,false],['الغرف اليسرى\nشهد حسين',-30,6.6,12.4,false],['الغرف اليمنى\nقصي الحجيلي',30,6.6,12.4,false],['القائد المتنقل\nأصيل الصبحي',7.5,5.2,16,true]];
- for(const [text,x,y,z,post] of leads){label(text,x,y,z,9,2.25,'#24324f','#ffffff');if(post)cyl(x,(y-1.1)/2,z-.05,.08,y-1.1,dark);}
+ // Area leads (owner's list, 15 Nov 2026): a name card above each area. Cards face the camera so they read from any angle.
+ function leadCard(area,name,accent,x,y,z){
+  const s=Q.canvasScale,c=document.createElement('canvas');c.width=900*s;c.height=300*s;const q=c.getContext('2d');q.scale(s,s);
+  q.shadowColor='rgba(16,34,30,.28)';q.shadowBlur=22;q.shadowOffsetY=6;q.fillStyle='#fbfbf7';q.beginPath();q.roundRect(24,20,852,250,46);q.fill();q.shadowColor='transparent';
+  const grad=q.createLinearGradient(0,20,0,270);(Array.isArray(accent)?accent:[accent,accent]).forEach((col,i,a)=>grad.addColorStop(a.length>1?i/(a.length-1):0,col));
+  q.fillStyle=grad;q.beginPath();q.roundRect(812,20,64,250,[0,46,46,0]);q.fill();
+  q.direction='rtl';q.textAlign='right';q.textBaseline='middle';
+  q.fillStyle=Array.isArray(accent)?accent[0]:accent;q.font='bold 52px Tahoma, Arial';q.fillText(area,776,92,700);
+  q.fillStyle='#1d2f2b';q.font='bold 92px Tahoma, Arial';q.fillText(name,776,190,700);
+  const map=new THREE.CanvasTexture(c);map.colorSpace=THREE.SRGBColorSpace;map.anisotropy=4;
+  const card=new THREE.Sprite(new THREE.SpriteMaterial({map,transparent:true,depthWrite:false}));card.position.set(x,y,z);card.scale.set(6.6,2.2,1);card.renderOrder=2;world.add(card);return card;
+ }
+ for(const [area,name,accent,x,y,z] of [
+  ['منطقة الأحمر والأصفر','هبة نور الهي',['#c2463f','#d9a92e'],74,4.6,22],
+  ['المنطقة الخضراء','مالك الأحمدي','#2f8a5b',27,4.6,22],
+  ['الاستقبال','جنى حلواني','#2f6f86',0,6.2,-10],
+  ['الغرف اليسرى','شهد حسين','#3d5a8a',-30,6.2,4],
+  ['الغرف اليمنى','قصي الحجيلي','#3d5a8a',30,6.2,4],
+  ['القائد المتنقل','أصيل الصبحي','#b8862f',6.5,4.2,16.5]])leadCard(area,name,accent,x,y,z);
  roofs.children.forEach(o=>o.position.y+=floorHeight);
  const led=new THREE.MeshStandardMaterial({color:'#fafbf2',emissive:'#fff9ef',emissiveIntensity:.6});for(const r of roomData)box(r.x,3.72+floorHeight,8,1.4,.045,.65,led,roofs);for(const x of [-6,0,6])for(const z of [-3,-9,-15])box(x,3.72+floorHeight,z,1.3,.045,.65,led,roofs);roofs.visible=false;
  world.updateMatrixWorld(true);

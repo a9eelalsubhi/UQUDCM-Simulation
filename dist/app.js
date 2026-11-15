@@ -3,7 +3,7 @@ import {Q,tier,tierLabel,chooseQuality} from './quality.js?v=20261112b';
 import {startVisualLab} from './lab-visuals.js?v=20261112b';
 import {OrbitControls} from './vendor/OrbitControls.js';
 import {mergeGeometries} from './vendor/BufferGeometryUtils.js';
-import {buildFacility,roomData,siteLayout} from './facility.js?v=20261115e';
+import {buildFacility,roomData,siteLayout} from './facility.js?v=20261115f';
 import {createDrill} from './drill.js?v=20261112e';
 import {createDashboard} from './dashboard.js?v=20261112b';
 import {stadiumOutline} from './traffic.js?v=20261112b';
