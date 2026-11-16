@@ -293,7 +293,8 @@ export function buildFacility(scene){
  const smokeTexCanvas=document.createElement('canvas');smokeTexCanvas.width=smokeTexCanvas.height=256;const ctx=smokeTexCanvas.getContext('2d');
  for(let i=0;i<55;i++){const x=60+random()*136,y=60+random()*136,r=22+random()*44,grad=ctx.createRadialGradient(x,y,0,x,y,r);grad.addColorStop(0,'rgba(54,57,59,.17)');grad.addColorStop(.5,'rgba(69,73,75,.08)');grad.addColorStop(1,'rgba(90,94,95,0)');ctx.fillStyle=grad;ctx.fillRect(x-r,y-r,r*2,r*2)}
  const st=new THREE.CanvasTexture(smokeTexCanvas);
- for(let i=0;i<30;i++){const o=new THREE.Sprite(new THREE.SpriteMaterial({map:st,transparent:true,depthWrite:false,opacity:.75,color:'#9da3a7'}));o.userData.seed=i/30;o.userData.drift=Math.sin(i*2.4);smoke.add(o)}
+ // Fewer smoke puffs on the light tier: large transparent sprites are the costliest thing to draw up close on tablets and phones.
+ const puffs=Q.lite?12:30;for(let i=0;i<puffs;i++){const o=new THREE.Sprite(new THREE.SpriteMaterial({map:st,transparent:true,depthWrite:false,opacity:.75,color:'#9da3a7'}));o.userData.seed=i/puffs;o.userData.drift=Math.sin(i*2.4);smoke.add(o)}
  const flames=new THREE.Group();smoke.add(flames);flames.userData.fire=true;flames.position.set(59.1,.7,2);
  const fireCanvas=document.createElement('canvas');fireCanvas.width=128;fireCanvas.height=256;const fc=fireCanvas.getContext('2d');
  for(let i=0;i<14;i++){const x=30+random()*68,y=115+random()*70,r=15+random()*25,gr=fc.createRadialGradient(x,y,0,x,y,r*2.8);gr.addColorStop(0,'rgba(255,244,149,.9)');gr.addColorStop(.15,'rgba(255,166,37,.7)');gr.addColorStop(.4,'rgba(230,77,14,.35)');gr.addColorStop(1,'rgba(240,90,15,0)');fc.fillStyle=gr;fc.fillRect(x-r*3,y-r*3,r*6,r*6)}

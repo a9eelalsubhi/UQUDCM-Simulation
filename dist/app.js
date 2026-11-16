@@ -3,7 +3,7 @@ import {Q,tier,tierLabel,chooseQuality} from './quality.js?v=20261112b';
 import {startVisualLab} from './lab-visuals.js?v=20261112b';
 import {OrbitControls} from './vendor/OrbitControls.js';
 import {mergeGeometries} from './vendor/BufferGeometryUtils.js';
-import {buildFacility,roomData,siteLayout} from './facility.js?v=20261116a';
+import {buildFacility,roomData,siteLayout} from './facility.js?v=20261116b';
 import {createDrill} from './drill.js?v=20261116a';
 import {createDashboard} from './dashboard.js?v=20261112b';
 import {stadiumOutline} from './traffic.js?v=20261112b';
@@ -12,6 +12,7 @@ import {RenderPass} from './vendor/postprocessing/RenderPass.js';
 import {GTAOPass} from './vendor/postprocessing/GTAOPass.js';
 import {OutputPass} from './vendor/postprocessing/OutputPass.js';
 const $=id=>document.getElementById(id);
+const clamp01=v=>v<0?0:v>1?1:v;
 // Textures and the HDR environment report through the default manager; mirror it on the loading screen.
 THREE.DefaultLoadingManager.onProgress=(url,loaded,total)=>{const pct=Math.round(loaded/Math.max(total,1)*100),bar=$('load-bar');if(!bar)return;bar.style.width=pct+'%';bar.parentElement.setAttribute('aria-valuenow',pct);$('load-label').textContent=pct+'%';};
 const viewport=$('viewport'),scene=new THREE.Scene();
@@ -35,7 +36,7 @@ const fill=new THREE.DirectionalLight('#eaf3ff',.6);fill.position.set(20,20,-30)
 const skyCanvas=document.createElement('canvas');skyCanvas.width=512;skyCanvas.height=256;const skyCtx=skyCanvas.getContext('2d'),skyGrad=skyCtx.createLinearGradient(0,0,0,256);skyGrad.addColorStop(0,'#84accf');skyGrad.addColorStop(.48,'#e5eced');skyGrad.addColorStop(.53,'#d6ccb5');skyGrad.addColorStop(1,'#857c6c');skyCtx.fillStyle=skyGrad;skyCtx.fillRect(0,0,512,256);const skyTex=new THREE.CanvasTexture(skyCanvas);skyTex.colorSpace=THREE.SRGBColorSpace;skyTex.mapping=THREE.EquirectangularReflectionMapping;scene.environment=skyTex;scene.environmentIntensity=.35;
 
 const facility=buildFacility(scene);
-const orbit=new OrbitControls(camera,renderer.domElement);orbit.enableDamping=true;orbit.dampingFactor=.07;orbit.maxPolarAngle=Math.PI/2.07;orbit.minDistance=5;orbit.maxDistance=650;orbit.target.set(0,0,7);
+const orbit=new OrbitControls(camera,renderer.domElement);orbit.enableDamping=true;orbit.zoomToCursor=true;orbit.dampingFactor=.07;orbit.maxPolarAngle=Math.PI/2.07;orbit.minDistance=5;orbit.maxDistance=650;orbit.target.set(0,0,7);
 let overviewFit=true;
 let mode='overview',yaw=0,pitch=0,keys={},lastTime=0,lastMap=0,lastInteract=0,drag=null,toastTimer,panelsOpen=false;
 renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();toast('توقف عرض 3D مؤقتاً بسبب ضغط على كرت الشاشة — أعد تحميل الصفحة أو اختر الجودة الخفيفة');});
@@ -169,7 +170,9 @@ $('share-btn').onclick=async()=>{const url=location.origin+location.pathname;try
 function step(dt){let forward=(keys.KeyW||keys.ArrowUp?1:0)-(keys.KeyS||keys.ArrowDown?1:0),side=(keys.KeyD||keys.ArrowRight?1:0)-(keys.KeyA||keys.ArrowLeft?1:0);const length=Math.hypot(forward,side)||1;forward/=length;side/=length;const speed=(keys.ShiftLeft||keys.ShiftRight?5.5:3)*dt;const dx=(-Math.sin(yaw)*forward+Math.cos(yaw)*side)*speed,dz=(-Math.cos(yaw)*forward-Math.sin(yaw)*side)*speed;const n=Math.max(1,Math.ceil(speed/.12));for(let i=0;i<n;i++){if(!isBlocked(camera.position.x+dx/n,camera.position.z))camera.position.x+=dx/n;if(!isBlocked(camera.position.x,camera.position.z+dz/n))camera.position.z+=dz/n;}camera.position.y=1.68+facility.groundHeight(camera.position.x,camera.position.z);camera.rotation.set(pitch,yaw,0);}
 // Frames are capped: full rate while something moves, a low rate when the view is still. Saves battery and heat on phones and laptops.
 function frame(wallMs){requestAnimationFrame(frame);const busy=drill.playing||!!cameraGoal||mode==='walk'&&(!!drag||Object.values(keys).some(Boolean))||wallMs-lastInteract<1500;if(lastTime&&wallMs-lastTime<1000/(busy?Q.maxFps:Q.idleFps)-2)return;adaptResolution(wallMs,busy);const elapsed=lastTime?Math.min((wallMs-lastTime)/1000,.25):0,dt=Math.min(elapsed,.05);lastTime=wallMs;drill.tick(elapsed);const ms=drill.active?drill.clock*1000:wallMs;if(mode==='walk'&&!panelsOpen&&!document.querySelector('dialog[open]')){step(dt);updateLocation()}else if(mode==='overview'){if(cameraGoal){const u=THREE.MathUtils.clamp((wallMs-cameraGoal.started)/1400,0,1),a=u*u*(3-2*u);camera.position.lerpVectors(cameraGoal.fromEye,cameraGoal.eye,a);orbit.target.lerpVectors(cameraGoal.fromTarget,cameraGoal.target,a);if(u===1)cameraGoal=null;}orbit.update();}
- facility.smoke.children.forEach(o=>{if(o.userData.fire){o.children.forEach((flame,i)=>{flame.scale.set(.9+Math.sin(ms*.01+i)*.11,2+Math.sin(ms*.007+i)*.24,1);flame.material.opacity=.68+Math.sin(ms*.009+i)*.18});return;}const t=((ms*.000052+o.userData.seed)%1);o.position.set(59.4+t*4.5+o.userData.drift*t*.7,1+t*10.5,2+t*1.2+o.userData.drift*t);o.scale.set(1.5+t*7,1.8+t*6.5,1);o.material.opacity=Math.sin(Math.PI*t)*.7;});
+ facility.smoke.children.forEach(o=>{if(o.userData.fire){o.children.forEach((flame,i)=>{flame.scale.set(.9+Math.sin(ms*.01+i)*.11,2+Math.sin(ms*.007+i)*.24,1);flame.material.opacity=.68+Math.sin(ms*.009+i)*.18});return;}const t=((ms*.000052+o.userData.seed)%1);o.position.set(59.4+t*4.5+o.userData.drift*t*.7,1+t*10.5,2+t*1.2+o.userData.drift*t);o.scale.set(1.5+t*7,1.8+t*6.5,1);
+  // Puffs near the camera fade out and are skipped: up close they cover the screen and multiply the drawing work.
+  const near=clamp01((camera.position.distanceTo(o.position)-o.scale.x*.6)/8);o.material.opacity=Math.sin(Math.PI*t)*.7*near;o.visible=o.material.opacity>.02;});
  facility.fireLight.intensity=4.2+Math.sin(ms*.017)*.65;if(wallMs-lastMap>66){lastMap=wallMs;minimap();}if(aoEnabled)composer.render(dt);else renderer.render(scene,camera);
 }
 // Dynamic resolution: while the scene is moving, lower the render scale when frames drop and restore it when there is headroom.
