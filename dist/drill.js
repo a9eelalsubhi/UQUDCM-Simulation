@@ -211,6 +211,8 @@ export function createDrill({scene,facility,renderer,onChange=()=>{},onFocus=()=
  let previousRoadDeparture=-Infinity;
  const transfersPlaceholder={firstDeparture:0};
  const transportPatients=[...patients.filter(p=>p.kind==='red').sort((a,b)=>a.index-b.index),...patients.filter(p=>p.kind==='yellow').sort((a,b)=>a.index-b.index)];
+ // Stretcher swap pool: two spare stretchers at reception; reception staff (intake-1/2) are the porters inside the hospital.
+ const stretcherSlots=facility.siteLayout.stretcherSlots,spareStretchers=stretcherSlots.map(()=>emptyStretcher()),slotFree=stretcherSlots.map(()=>0);let porterFree=0;
  const transfers=transportPatients.map((p,i)=>{
   const vehicleIndex=i%2,bay=0,vehicle=vehicles[vehicleIndex],park=point(77,33),bedId=bedOrder[i],bed=beds[bedId];
   const firstDeparture=i?transfersPlaceholder.firstDeparture:0;
@@ -229,6 +231,15 @@ export function createDrill({scene,facility,renderer,onChange=()=>{},onFocus=()=
   // Reserve the hospital bay until its crew returns, preventing stacked vehicles.
   const delay=Math.max(0,(lastBerth[0]?.returnWalkDone||0)+8-trip.driveDone,previousRoadDeparture+10-trip.loadDone);
   if(delay)for(const key of ['dispatch','prepare','unpackDone','atPatient','pickupDone','start','loadDone','driveDone','loopStart','loopEnd','unloaded','receptionStart','receptionDone','atBed','done','returnWalkDone','returnDone'])trip[key]+=delay;
+  // Stretcher swap (owner's instruction): after the reception handoff the crew takes a spare stretcher from reception and leaves at once.
+  // Reception staff wheel the patient to the bed, then bring the emptied stretcher back to the same reception spot for the next ambulance.
+  const slotIndex=i%2,slot=stretcherSlots[slotIndex],handoff=trip.hospitalPath.points[5],inside=trip.hospitalPath.length-trip.hospitalPath.lengths[5];
+  Object.assign(trip,{slotIndex,slot,handoffDone:trip.receptionStart+5});
+  trip.receptionDone=Math.max(trip.handoffDone,porterFree);trip.atBed=trip.receptionDone+inside/1.25;trip.done=trip.atBed+6;
+  trip.backPath=makePath([trip.foot,[trip.bed.x,5.6],[trip.roomX,5.6],[trip.roomX,2.2],[slot.x,2.2],[slot.x,slot.z+1.6],slot]);trip.backStart=trip.done+1;trip.stretcherBack=trip.backStart+trip.backPath.length/1.25;porterFree=trip.stretcherBack+3;
+  trip.crewToSlot=makePath([handoff,[slot.x,2.2],[slot.x,slot.z+1.4]]);trip.crewAtSlot=trip.handoffDone+trip.crewToSlot.length/1.4;trip.crewTake=Math.max(trip.crewAtSlot,slotFree[slotIndex]);
+  trip.crewBackPath=makePath([slot,[slot.x,2.2],...trip.hospitalPath.points.slice(0,6).reverse()]);trip.crewBack=trip.crewTake+2+trip.crewBackPath.length/1.4;trip.returnWalkDone=trip.crewBack+3;slotFree[slotIndex]=trip.stretcherBack;
+  const rj=ambulanceReturn(bay,staging[vehicleIndex]);trip.returnDone=trip.returnWalkDone+trip.returnDrivePath.length/5;trip.loopStart=trip.returnWalkDone+rj.loopStartDistance/5;trip.loopEnd=trip.returnWalkDone+rj.loopEndDistance/5;
   previousRoadDeparture=trip.loadDone;lastTrip[vehicleIndex]=lastBerth[bay]=trip;if(i===0)transfersPlaceholder.firstDeparture=trip.loadDone;return trip;
  });
  const allBedsAt=Math.max(...transfers.map(t=>t.done));
@@ -269,6 +280,7 @@ export function createDrill({scene,facility,renderer,onChange=()=>{},onFocus=()=
   {time:tr.loopEnd,label:'الوصول إلى طابور الجهة المقابلة · إسعاف '+(tr.vehicleIndex+1),view:'loop',patient:tr.patient.id,bedId:tr.bedId},
   {time:tr.driveDone,label:'وصول '+tr.patient.id+' إلى المستشفى',view:'hospital',patient:tr.patient.id,bedId:tr.bedId},
   {time:tr.receptionStart,label:'تسليم '+tr.patient.id+' إلى استقبال الطوارئ',view:'intake',patient:tr.patient.id,bedId:tr.bedId},
+  {time:tr.handoffDone,label:'تبديل النقالة · طاقم إسعاف '+(tr.vehicleIndex+1)+' يأخذ نقالة الاستقبال ويغادر',view:'intake',patient:tr.patient.id,bedId:tr.bedId},
   {time:tr.done,label:'وصول '+tr.patient.id+' إلى السرير '+tr.bedId,view:'bed',patient:tr.patient.id,bedId:tr.bedId}
  ]),{time:allBedsAt,label:'استلام الحالات الـ16 · اكتملت الغرف الثماني',view:'beds'},{time:greenA.start,label:'Switch · كل بسطتين متجاورتين تتبادلان فرق المسعفين',view:'green'},{time:greenB.start,label:'Switch · الفرق تلتفت للخلف وتنتقل إلى البسطات المقابلة',view:'green'},{time:roomSwitch.start,label:'Switch · طلاب كل غرفة يتبادلون السريرين',view:'beds'},...support.events].sort((a,b)=>a.time-b.time);
 
@@ -276,7 +288,7 @@ export function createDrill({scene,facility,renderer,onChange=()=>{},onFocus=()=
  const relocated={'intake-1':{x:-2.5,z:.5},'intake-2':{x:2.5,z:.5}};for(const [id,bed] of Object.entries(beds)){const r=facility.roomData.find(r=>r.id.split('/').includes(id)),side=Math.sign(bed.x-r.x);relocated['doctor-'+id]={x:r.x+side*2.65,z:10.8};for(let k=1;k<=5;k++){const a=facility.population.actors.find(a=>a.id==='student-'+id+'-'+k);if(a)relocated[a.id]=k<=3?{x:r.x+side*2.7,z:7.5+(k-1)*1.35}:{x:r.x+side*.6,z:k===4?10:11.1};}}
  for(const batch of facility.crowd.children){const items=[];(batch.userData.actorIds||[]).forEach((id,i)=>{if(id.startsWith('out-patient-')||id.startsWith('triage-')||support.hiddenActors.has(id)||relocated[id]||medicPlans.has(id)){batch.getMatrixAt(i,matrix);items.push({i,id,matrix:matrix.clone()});}});if(items.length)savedInstances.push({batch,items});}
  function staticScene(visible){
-  facility.patientVisuals.forEach(o=>o.visible=visible);facility.curtains.forEach(c=>c.node.visible=visible);
+  facility.patientVisuals.forEach(o=>o.visible=visible);facility.curtains.forEach(c=>c.node.visible=visible);facility.receptionStretchers?.forEach(o=>o.visible=visible);
   for(const {batch,items} of savedInstances){for(const item of items){if(visible)batch.setMatrixAt(item.i,item.matrix);else if(relocated[item.id]){
     const a=facility.population.actors.find(a=>a.id===item.id),p=relocated[item.id],m=item.matrix.clone();m.elements[12]+=p.x-a.x;m.elements[14]+=p.z-a.z;batch.setMatrixAt(item.i,m);
    }else if(medicPlans.has(item.id)&&!support.hiddenActors.has(item.id))batch.setMatrixAt(item.i,item.matrix);else batch.setMatrixAt(item.i,zero);}batch.instanceMatrix.needsUpdate=true;}
@@ -290,9 +302,16 @@ export function createDrill({scene,facility,renderer,onChange=()=>{},onFocus=()=
  function studentPose(s,t){if(t<roomSwitch.start)return {...s.p0,moving:false};if(t<roomSwitch.start+s.dur)return walkPose(s.route,(t-roomSwitch.start)/s.dur,s.p0.yaw,s.p1.yaw);return {...s.p1,moving:false};}
  // Movers re-place every instance of a static crowd figure: M = T(pose)·Ry(yaw)·(T(origin)·Ry(origin yaw))⁻¹·part.
  const movers=[],moverByid=new Map(),moverMatrix=new THREE.Matrix4(),moverWork=new THREE.Matrix4(),dirtyBatches=new Set();let lastShadow=-1;
- for(const {batch,items} of savedInstances)for(const item of items){const plan=medicPlans.get(item.id),student=studentPlans.get(item.id);if((!plan||support.hiddenActors.has(item.id))&&!student)continue;
-  let m=moverByid.get(item.id);if(!m){const a=actorById.get(item.id);m={id:item.id,pose:student?(t=>studentPose(student,t)):(t=>medicPose(plan,t)),inv0:new THREE.Matrix4().makeRotationY(a.yaw).setPosition(a.x,0,a.z).invert(),items:[],key:null};moverByid.set(item.id,m);movers.push(m);}
+ for(const {batch,items} of savedInstances)for(const item of items){const plan=medicPlans.get(item.id),student=studentPlans.get(item.id);const porter=['intake-1','intake-2'].indexOf(item.id);if((!plan||support.hiddenActors.has(item.id))&&!student&&porter<0)continue;
+  let m=moverByid.get(item.id);if(!m){const a=actorById.get(item.id);m={id:item.id,pose:porter>=0?(t=>porterPose(porter,t)):student?(t=>studentPose(student,t)):(t=>medicPose(plan,t)),inv0:new THREE.Matrix4().makeRotationY(a.yaw).setPosition(a.x,0,a.z).invert(),items:[],key:null};moverByid.set(item.id,m);movers.push(m);}
   m.items.push({batch,i:item.i,matrix:item.matrix});}
+ // Reception staff wheel each patient from the handoff to the bed, then bring the empty stretcher back to its reception spot.
+ function porterPose(k,t){const id='intake-'+(k+1),a=actorById.get(id),home={...relocated[id],yaw:a.yaw},side=k?.75:-.75,tr=transfers.filter(q=>t>=q.receptionDone).at(-1);
+  if(!tr||t>=tr.stretcherBack+3)return {...home,moving:false};
+  if(t<tr.atBed){const ph=transferPose(tr,t);return {...sidePoint(ph,side),moving:ph.moving};}
+  if(t<tr.backStart)return {...placed(point(tr.bed.x+(k?.85:-.85),tr.bed.z),k?-Math.PI/2:Math.PI/2),moving:false};
+  if(t<tr.stretcherBack){const s=sample(tr.backPath,(t-tr.backStart)/(tr.stretcherBack-tr.backStart));return {...sidePoint(s,side*.75),moving:true};}
+  const u=clamp((t-tr.stretcherBack)/3);return {x:mix(tr.slot.x+side,home.x,u),z:mix(tr.slot.z+1.3,home.z,u),yaw:home.yaw,moving:u<1};}
  function applyMovers(t){
   for(const m of movers){const q=m.pose(t),bob=q.moving?.025*Math.abs(Math.sin(t*9)):0,key=q.x.toFixed(3)+'|'+q.z.toFixed(3)+'|'+q.yaw.toFixed(3)+'|'+bob.toFixed(3);if(key===m.key)continue;m.key=key;
    moverMatrix.makeRotationY(q.yaw).setPosition(q.x,bob,q.z).multiply(m.inv0);for(const it of m.items){moverWork.multiplyMatrices(moverMatrix,it.matrix);it.batch.setMatrixAt(it.i,moverWork);dirtyBatches.add(it.batch);}}
@@ -402,7 +421,7 @@ export function createDrill({scene,facility,renderer,onChange=()=>{},onFocus=()=
   if(t<tr.loadDone){const a=tr.loadPath.points.at(-1),b=relative(tr.vehicle,0,-.65,.35),u=clamp((t-(tr.loadDone-4))/4);return {x:mix(a.x,b.x,u),z:mix(a.z,b.z,u),y:mix(0,.35,u),yaw:-Math.PI/2,stage:'loading',moving:false};}
   if(t<tr.driveDone)return {...relative(tr.vehicle,0,-.65,.35),stage:'aboard',moving:false};
   if(t<tr.unloaded){const a=relative(tr.vehicle,0,-.65,.35),b=tr.hospitalPath.points[0],u=clamp((t-tr.driveDone)/4);return {x:mix(a.x,b.x,u),z:mix(a.z,b.z,u),y:mix(.35,0,u),yaw:Math.PI,stage:'unloading',moving:false};}
-  if(t<tr.atBed){const elapsed=t-tr.unloaded-(t>=tr.receptionDone?5:t>=tr.receptionStart?t-tr.receptionStart:0);return {...sample(tr.hospitalPath,elapsed*1.25/tr.hospitalPath.length),stage:t>=tr.receptionStart&&t<tr.receptionDone?'reception':'hospital-walk',moving:!(t>=tr.receptionStart&&t<tr.receptionDone)};}
+  if(t<tr.atBed){const elapsed=t-tr.unloaded-(t>=tr.receptionDone?tr.receptionDone-tr.receptionStart:t>=tr.receptionStart?t-tr.receptionStart:0);return {...sample(tr.hospitalPath,elapsed*1.25/tr.hospitalPath.length),stage:t>=tr.receptionStart&&t<tr.receptionDone?'reception':'hospital-walk',moving:!(t>=tr.receptionStart&&t<tr.receptionDone)};}
   return {...placed(tr.foot,Math.PI),stage:t<tr.done?'bed-transfer':'bed',moving:false,transfer:clamp((t-tr.atBed)/6)};
  }
  function update(t,force=false){
@@ -416,6 +435,9 @@ export function createDrill({scene,facility,renderer,onChange=()=>{},onFocus=()=
   }
 
   for(let i=0;i<vehicles.length;i++){const v=vehicles[i],tr=currentTrip(i,t);v.root.visible=active;position(v,vehiclePose(i,t));const driving=tr&&(t>=tr.dispatch&&t<tr.prepare||t>=tr.loadDone&&t<tr.driveDone||t>=tr.returnWalkDone&&t<tr.returnDone);v.wheels.forEach(w=>w.rotation.x=driving?-t*6:0);v.blue.forEach((light,j)=>light.visible=Math.sin(t*7+j*Math.PI)>.05);const empty=emptyStretchers[i];empty.root.visible=active&&!!tr&&t>=tr.prepare&&t<tr.pickupDone;if(tr&&empty.root.visible){let p;if(t<tr.unpackDone){const u=clamp((t-tr.prepare)/3),a=relative(v,0,-.65,.35),b=tr.pickupPath.points[0];p={x:mix(a.x,b.x,u),z:mix(a.z,b.z,u),yaw:-Math.PI/2,y:mix(.35,0,u)};}else p=t<tr.atPatient?sample(tr.pickupPath,(t-tr.unpackDone)/(tr.atPatient-tr.unpackDone)):placed(tr.pickup);position(empty,p,p.y||0);}}
+  for(let s=0;s<spareStretchers.length;s++){const o=spareStretchers[s];let pose=placed(stretcherSlots[s],0),y=0,show=active;const tr=transfers.filter(q=>q.slotIndex===s&&t>=q.crewTake).at(-1);
+   if(tr&&t>=tr.crewTake+2){if(t<tr.crewBack)pose=sample(tr.crewBackPath,(t-tr.crewTake-2)/(tr.crewBack-tr.crewTake-2));else if(t<tr.crewBack+3){const a=tr.crewBackPath.points.at(-1),b=relative(tr.vehicle,0,-.65,.35),u=clamp((t-tr.crewBack)/3);pose={x:mix(a.x,b.x,u),z:mix(a.z,b.z,u),yaw:-Math.PI/2};y=.35*u;}else if(t<tr.backStart)show=false;else if(t<tr.stretcherBack)pose=sample(tr.backPath,(t-tr.backStart)/(tr.stretcherBack-tr.backStart));}
+   o.root.visible=show;position(o,pose,y);}
   for(const tr of transfers)tr.bedAnchor.userData.tagVisible=t>=tr.done;
   for(const p of patients){
    const person=p.person;person.root.visible=active&&t>=p.start;if(p.litter)p.litter.visible=false;if(p.escort){p.escort.root.visible=active;position(p.escort,placed(p.guideHold,Math.PI));p.escort.pose(t,false);p.escort.root.userData.tagVisible=false;}if(p.label)p.label.visible=false;p.state='building';if(!person.root.visible)continue;
@@ -450,7 +472,8 @@ export function createDrill({scene,facility,renderer,onChange=()=>{},onFocus=()=
 
   for(let i=0;i<medics.length;i++){
    const vehicleIndex=Math.floor(i/2),tr=currentTrip(vehicleIndex,t),doc=medics[i],phase=tr?transferPose(tr,t):null;doc.root.visible=active;doc.root.userData.tagVisible=false;let p=relative(vehicles[vehicleIndex],i%2===1?.7:-.7,-.8,.37),moving=false,seated=true;
-   if(tr&&t>=tr.returnWalkDone&&t<tr.returnDone){p=relative(tr.vehicle,i%2===1?.7:-.7,-.8,.37);seated=true;}
+   if(tr&&t>=tr.returnWalkDone){p=relative(tr.vehicle,i%2===1?.7:-.7,-.8,.37);seated=true;}
+   else if(tr&&t>=tr.handoffDone){const side=i%2===1?.6:-.6;seated=false;if(t<tr.crewAtSlot){p=sidePoint(sample(tr.crewToSlot,(t-tr.handoffDone)/(tr.crewAtSlot-tr.handoffDone)),side);moving=true;}else if(t<tr.crewTake+2)p={x:tr.slot.x+side,z:tr.slot.z+1.3,yaw:Math.PI};else if(t<tr.crewBack){p=sidePoint(sample(tr.crewBackPath,(t-tr.crewTake-2)/(tr.crewBack-tr.crewTake-2)),side);moving=true;}else p=relative(tr.vehicle,side,-3.6,0);}
    else if(tr&&t>=tr.done){if(t<tr.returnWalkDone){p=sidePoint(sample(tr.returnWalkPath,(t-tr.done-2)/(tr.returnWalkDone-tr.done-2)),i%2===1?.25:-.25);moving=t>=tr.done+2;}else {p=relative(tr.vehicle,i%2===1?.7:-.7,-.8,.37);seated=true;}}
    else if(tr&&t<tr.prepare){p=relative(tr.vehicle,i%2===1?.7:-.7,-.8,.37);seated=true;}
    else if(tr&&t<tr.atPatient){const g=sample(tr.pickupPath,(t-tr.unpackDone)/(tr.atPatient-tr.unpackDone));p=sidePoint(g,i%2===1?.8:-.8);moving=true;}

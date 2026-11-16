@@ -338,6 +338,11 @@ export function buildFacility(scene){
  world.children.slice(roadStart).forEach(o=>o.userData.ambulanceRoad=true);
  stats.ambulanceLoopLength=Math.round(pathLength(lapPoints()));
 
+ // Two spare ambulance stretchers wait beside the reception staff; in the drill each ambulance crew swaps for one (owner's instruction, 16 Nov 2026).
+ siteLayout.stretcherSlots=[{x:-3.6,z:-.9},{x:3.6,z:-.9}];
+ const receptionStretchers=siteLayout.stretcherSlots.map(s=>{const g=new THREE.Group();g.position.set(s.x,floorHeight,s.z);g.userData.simulationPatient=true;world.add(g);
+  box(0,.72,0,.92,.13,2.08,'#bcc9cd',g);box(0,.82,0,.91,.16,2.05,'#dce3df',g);box(0,.95,-.72,.6,.1,.35,'#f4f3e8',g);
+  for(const side of [-1,1]){box(side*.48,.94,0,.035,.035,1.7,'#8fa4aa',g);for(const z of [-.78,.78]){box(side*.36,.42,z,.04,.55,.04,'#aebfc3',g);const w=cyl(side*.36,.15,z,.12,.07,rubber,g);w.rotation.z=Math.PI/2;}}return g;});
  // Area leads (owner's list, 15 Nov 2026): a name card above each area. Cards face the camera so they read from any angle.
  function leadCard(area,name,accent,x,y,z){
   const s=Q.canvasScale,c=document.createElement('canvas');c.width=900*s;c.height=300*s;const q=c.getContext('2d');q.scale(s,s);
@@ -378,7 +383,7 @@ export function buildFacility(scene){
    const geoms=items.map(o=>{let g=o.geometry.clone();if(g.index)g=g.toNonIndexed();for(const k of Object.keys(g.attributes))if(!['position','normal','uv'].includes(k))g.deleteAttribute(k);if(!g.attributes.uv)g.setAttribute('uv',new THREE.Float32BufferAttribute(new Float32Array(g.attributes.position.count*2),2));return g.applyMatrix4(inv.clone().multiply(o.matrixWorld));}),merged=mergeGeometries(geoms,false);geoms.forEach(g=>g.dispose());if(!merged)continue;
    const m=new THREE.Mesh(merged,material);m.castShadow=items.some(o=>o.castShadow);m.receiveShadow=true;node.add(m);items.forEach(o=>o.parent.remove(o));}
  }
- return {world,roofs,smoke,crowd,population,groundHeight,floorHeight,patientVisuals,curtains,bedsByCase,colliders,stats,roomData,triages,siteLayout,fireLight,exit:{x:59,z:2}};
+ return {receptionStretchers,world,roofs,smoke,crowd,population,groundHeight,floorHeight,patientVisuals,curtains,bedsByCase,colliders,stats,roomData,triages,siteLayout,fireLight,exit:{x:59,z:2}};
 }
 
 
