@@ -1,7 +1,7 @@
 import * as THREE from './vendor/three.module.js';
 export function bedBoard(snapshot,rooms){
  const cases=snapshot?.active?snapshot.patients:[];
- const rows=rooms.map(room=>{const beds=room.id.split('/').map(id=>{const p=cases.find(p=>p.destination===id),arrived=p?.state==='bed',referred=p&&['referral-transfer','helipad-transfer','airborne'].includes(p.state),enRoute=p&&['patient-pickup','loading-walk','loading','aboard','unloading','reception','hospital-walk','bed-transfer'].includes(p.state);return {id,patient:p?.id??null,received:!!p?.admitted,state:referred?'referred':arrived?'arrived':enRoute?'en-route':'waiting'};});const count=beds.filter(b=>b.received).length;return {...room,beds,count,complete:count===2};});
+ const rows=rooms.map(room=>{const beds=room.id.split('/').map(id=>{const p=cases.filter(p=>p.destination===id).at(-1),arrived=p?.state==='bed',referred=p&&['referral-transfer','helipad-transfer','airborne'].includes(p.state),enRoute=p&&['patient-pickup','loading-walk','loading','aboard','unloading','reception','hospital-walk','bed-transfer'].includes(p.state);return {id,patient:p?.id??null,received:!!p?.admitted,state:referred?'referred':arrived?'arrived':enRoute?'en-route':'waiting'};});const count=beds.filter(b=>b.received).length;return {...room,beds,count,complete:count===2};});
  return {rooms:rows,arrived:rows.reduce((n,r)=>n+r.count,0),occupied:rows.flatMap(r=>r.beds).filter(b=>b.state==='arrived').length,complete:rows.filter(r=>r.complete).length,time:snapshot?.time||0,active:!!snapshot?.active};
 }
 export function createDashboard({scene,facility,open}){

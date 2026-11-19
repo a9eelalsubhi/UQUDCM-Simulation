@@ -4,8 +4,8 @@ import {startVisualLab} from './lab-visuals.js?v=20261112b';
 import {OrbitControls} from './vendor/OrbitControls.js';
 import {mergeGeometries} from './vendor/BufferGeometryUtils.js';
 import {buildFacility,roomData,siteLayout} from './facility.js?v=20261116b';
-import {createDrill} from './drill.js?v=20261116a';
-import {createDashboard} from './dashboard.js?v=20261112b';
+import {createDrill} from './drill.js?v=20261120b';
+import {createDashboard} from './dashboard.js?v=20261120b';
 import {stadiumOutline} from './traffic.js?v=20261112b';
 import {EffectComposer} from './vendor/postprocessing/EffectComposer.js';
 import {RenderPass} from './vendor/postprocessing/RenderPass.js';
@@ -162,6 +162,13 @@ for(const p of drill.patients.filter(p=>p.kind!=='green')){const o=document.crea
 const heatOption=document.createElement('option');heatOption.value='heat';heatOption.textContent='الإجهاد الحراري';$('event-patient').append(heatOption);
 function buildTimeline(){const chosen=$('event-patient').value;$('event-list').replaceChildren();for(const e of drill.events.filter(e=>chosen==='all'||e.patient===chosen||chosen==='heat'&&e.view==='heat')){const button=document.createElement('button');button.dataset.time=e.time;button.innerHTML='<time dir="ltr">'+clockLabel(e.time)+'</time><span>'+e.label+'</span><i>↗</i>';button.onclick=()=>focusEvent(e);$('event-list').append(button);}updateTimeline(drill.getSnapshot());}
 $('event-patient').onchange=buildTimeline;buildTimeline();
+// Key moments (owner's request): one-tap jumps for presentations. Each starts the drill, seeks a few seconds before the moment, aims the camera and plays.
+{const sw=drill.switches,sup=drill.support,firstFaint=Math.min(...sup.affected.map(h=>h.collapse));
+ const moments=[['Switch البسطات ١','بسطتان متجاورتان تتبادلان',sw.greenA.start-2,'green'],['Switch البسطات ٢','الالتفات والانتقال للمقابل',sw.greenB.start-2,'green'],['الإغماء','إجهاد حراري بين الفرق',firstFaint-4,'heat'],['Switch الغرف','الطلاب يتبادلون السريرين',sw.room.start-2,'beds'],['قرار الإحالة','R01 · جلطة قلبية',sup.clinicalReview-2,'beds'],['الحالة البديلة','G01 أخضر ← أصفر إلى '+drill.replacement.bedId,drill.replacement.worsen-2,'green'],['الهليكوبتر','الوصول للمهبط والإقلاع',sup.helipadArrival-3,'helipad']];
+ const box=document.createElement('nav');box.id='key-moments';box.setAttribute('aria-label','لقطات مهمة');box.innerHTML='<b>لقطات مهمة</b>';
+ for(const [title,sub,time,view] of moments){const b=document.createElement('button');b.type='button';b.innerHTML='<span>'+title+'</span><small>'+sub+' · <time dir="ltr">'+clockLabel(Math.max(0,time))+'</time></small>';
+  b.onclick=()=>{switchSimulation(true);stopFollow();drill.seek(Math.max(0,time));drill.setFollow(false);drillView(view);drill.play();box.querySelectorAll('button').forEach(x=>x.classList.toggle('selected',x===b));};box.append(b);}
+ document.body.append(box);}
 const ray=new THREE.Raycaster(),pointer=new THREE.Vector2();let screenDown=null;renderer.domElement.addEventListener('pointerdown',e=>screenDown={x:e.clientX,y:e.clientY});renderer.domElement.addEventListener('pointerup',e=>{if(!screenDown||Math.hypot(e.clientX-screenDown.x,e.clientY-screenDown.y)>6)return;const r=renderer.domElement.getBoundingClientRect();pointer.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(pointer,camera);if(ray.intersectObject(dashboard.screen).length)dashboard.open();screenDown=null;});
 $('help').querySelector('.help-content').insertAdjacentHTML('beforeend','<p><b>اختصارات المحاكاة</b><br><kbd>Space</kbd> تشغيل وإيقاف مؤقت · <kbd>→</kbd> / <kbd>←</kbd> تقديم أو رجوع 10 ثوانٍ · <kbd>Shift</kbd> مع الأسهم دقيقة كاملة.</p>');
 $('help').querySelector('.help-content').insertAdjacentHTML('afterbegin','<p><b>فرضية الحريق والتدافع (النسخة الثانية)</b><br>حريق في مبنى المشرحة الذي يحاكي سكن الحجاج، والكلية تمثل المستشفى الرئيسي. 30 حالة: 4 حمراء، 12 صفراء، 12 خضراء، ووفاتان. يخلي 5 منظمين الحالات؛ اثنان من الحمر محمولان على نقالات يدوية والثالث بمساعدة. فريق الفرز: 2 تيم ليدر و4 أعضاء يخرجون من باب الكلية إلى موقع الفرز. الخضر إلى 12 بسطة، حالة في كل بسطة مع 4 مسعفين، و9 بسطات فيها تيم ليدر. في البسطات Switch: كل بسطتين متجاورتين تتبادلان فرق المسعفين، ثم يلتفت الفريق للخلف وينتقل إلى البسطة المقابلة. ينقل إسعافان يدوران باستمرار الحالات الـ16 (الأحمر أولاً ثم الأصفر)، 8 رحلات لكل إسعاف بحالة واحدة كل مرة، ثم العودة عبر الدائرة. داخل الكلية 16 حجرة: مريض وطبيب و5 طلاب، وبعد استلام الحالات يتبادل طلاب كل غرفة السريرين (Switch). يظهر الإجهاد الحراري بين أفراد الفرق الراجلة مع آخر وصول، ثم تُحال حالة R01 (جلطة قلبية) بالإسعاف إلى المهبط والإخلاء الجوي. يمكن إيقاف كل مشهد واستئنافه والرجوع إليه من الخط الزمني. التوقيتات وموقع المهبط تقديرية للعرض.</p>');
